@@ -11,6 +11,7 @@ export function mapSupabaseSession(session: SupabaseAuthSession | null): AuthSes
 
   return {
     userId: session.user.id,
+    email: session.user.email,
     accessToken: session.access_token,
     refreshToken: session.refresh_token,
   };

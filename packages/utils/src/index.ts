@@ -45,6 +45,7 @@ export interface UpdateTodoInput {
 
 export interface AuthSession {
   userId: UserId;
+  email?: string;
   accessToken: string;
   refreshToken?: string;
 }

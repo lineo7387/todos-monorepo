@@ -342,14 +342,18 @@ export function App() {
 
       <section className="workspace-panel">
         <header className="workspace-header">
-          <div>
+          <div className="workspace-header__title">
             <p className="workspace-header__eyebrow">Web client</p>
             <h2>Todo workspace</h2>
           </div>
 
           {viewModel.isAuthenticated ? (
             <div className="workspace-header__session">
-              <p>{state.session?.userId}</p>
+              {state.session?.email ? (
+                <span className="account-badge" title={state.session.email}>
+                  {state.session.email}
+                </span>
+              ) : null}
               <div className="workspace-header__actions">
                 <button
                   disabled={pendingUi}

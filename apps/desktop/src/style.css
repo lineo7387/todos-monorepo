@@ -203,25 +203,43 @@ h3 {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
+}
+
+.workspace-header__title {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .workspace-header h2 {
-  margin-top: 0.4rem;
+  margin-top: 0;
+  margin-bottom: 0.675rem;
   font: 600 clamp(1.9rem, 3vw, 2.8rem) / 1 var(--serif);
 }
 
 .workspace-header__session {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   gap: 10px;
-  justify-items: end;
+  align-items: flex-end;
 }
 
-.workspace-header__session p {
+.account-badge {
   max-width: 260px;
-  text-align: right;
+  border: 1px solid rgba(107, 114, 128, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 12px;
   color: var(--text-muted);
-  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .workspace-header__actions,
@@ -498,13 +516,12 @@ h3 {
   .workspace-header__session,
   .workspace-header__actions,
   .todo-card__actions {
-    justify-items: stretch;
     justify-content: stretch;
+    align-items: stretch;
   }
 
-  .workspace-header__session p {
-    text-align: left;
-    max-width: none;
+  .account-badge {
+    max-width: min(100%, 320px);
   }
 
   .workspace-header__actions button,

@@ -412,8 +412,8 @@ export function MobileTodoApp() {
             <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>MOBILE CLIENT</Text>
               <Text style={styles.sectionTitle}>Todo workspace</Text>
-              {state.session?.userId ? (
-                <Text style={styles.sessionText}>{state.session.userId}</Text>
+              {state.session?.email ? (
+                <Text style={styles.sessionText}>{state.session.email}</Text>
               ) : null}
             </View>
 
