@@ -1,0 +1,28 @@
+{
+  "name": "desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "build": "vp exec vite build --base ./",
+    "check": "vp exec tsc --noEmit -p tsconfig.json",
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "start": "vp exec electron ."
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "todo-app": "workspace:*",
+    "todo-data": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "electron": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
