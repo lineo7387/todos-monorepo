@@ -1,10 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import {
-  createTodoAppController,
-  createTodoAppViewModel,
-  type TodoAppController,
-  type TodoAppState,
-} from "todo-app";
+import { createTodoAppController, createTodoAppViewModel, type TodoAppState } from "todo-app";
 import {
   createBrowserSessionStorageAdapter,
   createSupabaseAuthRepository,
@@ -13,9 +8,17 @@ import {
 } from "todo-data";
 
 import { getWebsiteSupabaseEnv } from "./env.ts";
-
-type WebsiteTodoItem = TodoAppState["todos"][number];
-type WebsiteWorkspace = NonNullable<ReturnType<typeof createTodoAppViewModel>["activeWorkspace"]>;
+import {
+  AuthPage,
+  CreateTeamPage,
+  DashboardPage,
+  JoinTeamPage,
+  TeamListPage,
+  TopLevelNavigation,
+  WorkspacePage,
+  type WebsiteWorkspace,
+} from "./pages.tsx";
+import { getWebsiteRouteHref, parseWebsiteRoute, type WebsiteRoute } from "./routes.ts";
 
 const FALLBACK_STATE: TodoAppState = {
   status: "signed-out",
@@ -35,7 +38,7 @@ const FALLBACK_STATE: TodoAppState = {
 };
 
 interface WebsiteBootstrap {
-  controller: TodoAppController | null;
+  controller: ReturnType<typeof createTodoAppController> | null;
   envError: string | null;
 }
 
@@ -72,31 +75,21 @@ function createWebsiteBootstrap(): WebsiteBootstrap {
   }
 }
 
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function getWorkspaceBadgeLabel(workspace: WebsiteWorkspace): string {
-  return workspace.kind === "team" ? "Team workspace" : "Personal workspace";
-}
-
-function getWorkspaceDescription(workspace: WebsiteWorkspace): string {
-  return workspace.kind === "team"
-    ? "Shared tasks stay in sync for every member of this team workspace."
-    : "These tasks belong to your personal workspace and follow your account across clients.";
-}
-
-function getComposerPlaceholder(workspace: WebsiteWorkspace | null): string {
-  if (!workspace) {
-    return "Select a workspace before adding a task";
+function getPageTitle(route: WebsiteRoute, teamName?: string): string {
+  switch (route.name) {
+    case "dashboard":
+      return "Dashboard";
+    case "personal-workspace":
+      return "My workspace";
+    case "team-list":
+      return "Teams";
+    case "team-detail":
+      return teamName ? teamName : "Team detail";
+    case "join-team":
+      return "Join team";
+    case "create-team":
+      return "Create team";
   }
-
-  return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
 }
 
 function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
@@ -120,63 +113,15 @@ function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
   };
 }
 
-function TodoRow({
-  todo,
-  disabled,
-  onDelete,
-  onStartEdit,
-  onToggleComplete,
-}: {
-  todo: WebsiteTodoItem;
-  disabled: boolean;
-  onDelete: (todoId: string) => void;
-  onStartEdit: (todo: WebsiteTodoItem) => void;
-  onToggleComplete: (todo: WebsiteTodoItem) => void;
-}) {
-  const isOptimistic = todo.id.startsWith("optimistic-");
-
-  return (
-    <li className={`todo-card ${todo.completed ? "is-complete" : ""}`}>
-      <label className="todo-toggle">
-        <input
-          checked={todo.completed}
-          disabled={disabled}
-          onChange={() => onToggleComplete(todo)}
-          type="checkbox"
-        />
-        <span className="todo-toggle__control" aria-hidden="true" />
-      </label>
-
-      <div className="todo-card__body">
-        <div className="todo-card__meta">
-          <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
-          <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
-        </div>
-        <p>{todo.title}</p>
-      </div>
-
-      <div className="todo-card__actions">
-        <button disabled={disabled} onClick={() => onStartEdit(todo)} type="button">
-          Edit
-        </button>
-        <button
-          className="danger"
-          disabled={disabled}
-          onClick={() => onDelete(todo.id)}
-          type="button"
-        >
-          Delete
-        </button>
-      </div>
-    </li>
-  );
-}
-
 export function App() {
   const [bootstrap] = useState(createWebsiteBootstrap);
   const [state, setState] = useState<TodoAppState>(
     () => bootstrap.controller?.getState() ?? FALLBACK_STATE,
   );
+  const [route, setRoute] = useState<WebsiteRoute>(() =>
+    parseWebsiteRoute(window.location.pathname),
+  );
+  const [routeNotice, setRouteNotice] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
@@ -197,11 +142,85 @@ export function App() {
     return unsubscribe;
   }, [bootstrap.controller]);
 
+  useEffect(() => {
+    function handlePopState() {
+      setRoute(parseWebsiteRoute(window.location.pathname));
+      setRouteNotice(null);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
-  const activeWorkspace = viewModel.activeWorkspace;
-  const emptyStateCopy = getEmptyStateCopy(activeWorkspace);
+  const personalWorkspace =
+    viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
+  const teamWorkspaces = viewModel.workspaces.filter(
+    (workspace): workspace is WebsiteWorkspace => workspace.kind === "team",
+  );
+  const routedTeamWorkspace =
+    route.name === "team-detail"
+      ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
+      : null;
+
+  function navigate(nextRoute: WebsiteRoute, options?: { replace?: boolean }) {
+    const href = getWebsiteRouteHref(nextRoute);
+
+    if (href !== window.location.pathname) {
+      if (options?.replace) {
+        window.history.replaceState(null, "", href);
+      } else {
+        window.history.pushState(null, "", href);
+      }
+    }
+
+    setRoute(nextRoute);
+    setRouteNotice(null);
+  }
+
+  useEffect(() => {
+    if (!controller || !viewModel.isAuthenticated) {
+      return;
+    }
+
+    if (route.name === "personal-workspace") {
+      if (personalWorkspace && viewModel.activeWorkspace?.id !== personalWorkspace.id) {
+        void controller.selectWorkspace(personalWorkspace.id).catch(() => {});
+      }
+
+      return;
+    }
+
+    if (route.name !== "team-detail") {
+      return;
+    }
+
+    if (!routedTeamWorkspace) {
+      if (!viewModel.isLoading) {
+        navigate({ name: "team-list" }, { replace: true });
+        setRouteNotice("That team is not available in your current memberships.");
+      }
+
+      return;
+    }
+
+    if (viewModel.activeWorkspace?.id !== routedTeamWorkspace.id) {
+      void controller.selectWorkspace(routedTeamWorkspace.id).catch(() => {});
+    }
+  }, [
+    controller,
+    personalWorkspace,
+    route,
+    routedTeamWorkspace,
+    viewModel.activeWorkspace?.id,
+    viewModel.isAuthenticated,
+    viewModel.isLoading,
+  ]);
 
   async function handleSignInSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -215,10 +234,7 @@ export function App() {
         ? controller.signUpWithPassword.bind(controller)
         : controller.signInWithPassword.bind(controller);
 
-    await action({
-      email,
-      password,
-    })
+    await action({ email, password })
       .then(() => {
         setPassword("");
       })
@@ -253,8 +269,9 @@ export function App() {
       .createTeam({
         name: draftTeamName,
       })
-      .then(() => {
+      .then((workspace) => {
         setDraftTeamName("");
+        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
       })
       .catch(() => {});
   }
@@ -277,7 +294,7 @@ export function App() {
       .catch(() => {});
   }
 
-  function beginEditing(todo: WebsiteTodoItem) {
+  function beginEditing(todo: TodoAppState["todos"][number]) {
     setEditingTodoId(todo.id);
     setEditingTitle(todo.title);
   }
@@ -287,9 +304,106 @@ export function App() {
     setEditingTitle("");
   }
 
+  function renderSignedInPage() {
+    if (!controller) {
+      return null;
+    }
+
+    if (viewModel.screen === "error") {
+      return (
+        <section className="empty-state empty-state--error">
+          <p className="empty-state__eyebrow">Sync needs attention</p>
+          <h3>We could not load the latest todos.</h3>
+          <p>Try refreshing after checking your network or Supabase configuration.</p>
+        </section>
+      );
+    }
+
+    switch (route.name) {
+      case "dashboard":
+        return (
+          <DashboardPage
+            onNavigate={navigate}
+            personalWorkspace={personalWorkspace}
+            teamCount={teamWorkspaces.length}
+          />
+        );
+      case "personal-workspace":
+        return (
+          <WorkspacePage
+            canManageTodos={viewModel.canManageTodos}
+            draftTitle={draftTitle}
+            editingTodoId={editingTodoId}
+            editingTitle={editingTitle}
+            emptyStateCopy={getEmptyStateCopy(personalWorkspace)}
+            onCancelEditing={cancelEditing}
+            onCreateSubmit={(event) => void handleCreateSubmit(event)}
+            onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
+            onDraftTitleChange={setDraftTitle}
+            onEditTitleChange={setEditingTitle}
+            onNavigate={navigate}
+            onSaveEdit={(event) => void handleSaveEdit(event)}
+            onStartEdit={beginEditing}
+            onToggleComplete={(todo) =>
+              void (
+                todo.completed
+                  ? controller.uncompleteTodo(todo.id)
+                  : controller.completeTodo(todo.id)
+              ).catch(() => {})
+            }
+            todoTitleError={viewModel.todoTitleError}
+            todos={viewModel.todos}
+            workspace={personalWorkspace}
+          />
+        );
+      case "team-list":
+        return <TeamListPage onNavigate={navigate} teams={teamWorkspaces} />;
+      case "team-detail":
+        return (
+          <WorkspacePage
+            canManageTodos={viewModel.canManageTodos}
+            draftTitle={draftTitle}
+            editingTodoId={editingTodoId}
+            editingTitle={editingTitle}
+            emptyStateCopy={getEmptyStateCopy(routedTeamWorkspace)}
+            onCancelEditing={cancelEditing}
+            onCreateSubmit={(event) => void handleCreateSubmit(event)}
+            onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
+            onDraftTitleChange={setDraftTitle}
+            onEditTitleChange={setEditingTitle}
+            onNavigate={navigate}
+            onSaveEdit={(event) => void handleSaveEdit(event)}
+            onStartEdit={beginEditing}
+            onToggleComplete={(todo) =>
+              void (
+                todo.completed
+                  ? controller.uncompleteTodo(todo.id)
+                  : controller.completeTodo(todo.id)
+              ).catch(() => {})
+            }
+            todoTitleError={viewModel.todoTitleError}
+            todos={viewModel.todos}
+            workspace={routedTeamWorkspace}
+          />
+        );
+      case "join-team":
+        return <JoinTeamPage onNavigate={navigate} />;
+      case "create-team":
+        return (
+          <CreateTeamPage
+            canManageTodos={viewModel.canManageTodos}
+            draftTeamName={draftTeamName}
+            onDraftTeamNameChange={setDraftTeamName}
+            onNavigate={navigate}
+            onSubmit={(event) => void handleCreateTeamSubmit(event)}
+          />
+        );
+    }
+  }
+
   if (bootstrap.envError) {
     return (
-      <main className="app-shell">
+      <main className="app-frame">
         <section className="setup-panel">
           <p className="setup-panel__eyebrow">Web client setup</p>
           <h1>Connect Supabase to continue.</h1>
@@ -308,43 +422,12 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero-panel">
-        <p className="hero-panel__eyebrow">Cross-platform todos</p>
-        <h1>One task flow across web, mobile, and desktop.</h1>
-        <p className="hero-panel__body">
-          This web shell is wired to the shared auth, sync, and optimistic update flow from the
-          monorepo packages.
-        </p>
-
-        <div className="hero-panel__highlights" role="list">
-          <div role="listitem">
-            <strong>Shared state</strong>
-            <span>
-              Session restore, loading, validation, and retry feedback come from `todo-app`.
-            </span>
-          </div>
-          <div role="listitem">
-            <strong>Supabase-backed</strong>
-            <span>
-              Auth and persisted todos use the same `todo-data` adapter planned for every client.
-            </span>
-          </div>
-          <div role="listitem">
-            <strong>Parity target</strong>
-            <span>
-              Core sign-in, create, edit, complete, delete, and refresh flows stay aligned across
-              platforms.
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section className="workspace-panel">
-        <header className="workspace-header">
+    <main className="app-frame">
+      <section className="workspace-panel workspace-panel--page">
+        <header className="workspace-header workspace-header--page">
           <div className="workspace-header__title">
             <p className="workspace-header__eyebrow">Web client</p>
-            <h2>Todo workspace</h2>
+            <h1>{getPageTitle(route, routedTeamWorkspace?.name)}</h1>
           </div>
 
           {viewModel.isAuthenticated ? (
@@ -374,257 +457,58 @@ export function App() {
           ) : null}
         </header>
 
-        {viewModel.loadingMessage ? (
-          <p className="info-banner">{viewModel.loadingMessage}</p>
-        ) : null}
-        {viewModel.pendingMessage ? (
-          <p className="info-banner info-banner--pending">{viewModel.pendingMessage}</p>
-        ) : null}
+        <div className="page-stack">
+          {viewModel.isAuthenticated ? (
+            <TopLevelNavigation
+              currentRoute={route}
+              onNavigate={navigate}
+              personalWorkspace={personalWorkspace}
+              teams={teamWorkspaces}
+            />
+          ) : null}
 
-        {viewModel.errorMessage ? (
-          <div
-            className={`feedback-banner ${
-              viewModel.errorKind === "validation"
-                ? "is-validation"
-                : viewModel.errorKind === "notice"
-                  ? "is-notice"
-                  : "is-error"
-            }`}
-          >
-            <p>{viewModel.errorMessage}</p>
-            <button onClick={() => controller.clearError()} type="button">
-              Dismiss
-            </button>
-          </div>
-        ) : null}
+          {viewModel.loadingMessage ? (
+            <p className="info-banner">{viewModel.loadingMessage}</p>
+          ) : null}
+          {viewModel.pendingMessage ? (
+            <p className="info-banner info-banner--pending">{viewModel.pendingMessage}</p>
+          ) : null}
+          {routeNotice ? <p className="info-banner">{routeNotice}</p> : null}
 
-        {viewModel.screen === "auth" ||
-        (viewModel.screen === "loading" && !viewModel.isAuthenticated) ? (
-          <section className="auth-panel">
-            <div>
-              <p className="auth-panel__eyebrow">Sign in</p>
-              <h3>
-                {authMode === "sign-up"
-                  ? "Create an account for synced todos."
-                  : "Authenticate before accessing your tasks."}
-              </h3>
-              <p className="auth-panel__body">
-                {authMode === "sign-up"
-                  ? "Create a Supabase-backed account with email and password. If email confirmation is enabled, confirm first and then sign in."
-                  : "Use a Supabase account configured for this project. Session restore will keep you signed in on reload."}
-              </p>
-            </div>
-
-            <div className="auth-mode-toggle">
-              <button
-                className={authMode === "sign-in" ? "is-active" : ""}
-                onClick={() => setAuthMode("sign-in")}
-                type="button"
-              >
-                Sign in
-              </button>
-              <button
-                className={authMode === "sign-up" ? "is-active" : ""}
-                onClick={() => setAuthMode("sign-up")}
-                type="button"
-              >
-                Create account
+          {viewModel.errorMessage ? (
+            <div
+              className={`feedback-banner ${
+                viewModel.errorKind === "validation"
+                  ? "is-validation"
+                  : viewModel.errorKind === "notice"
+                    ? "is-notice"
+                    : "is-error"
+              }`}
+            >
+              <p>{viewModel.errorMessage}</p>
+              <button onClick={() => controller.clearError()} type="button">
+                Dismiss
               </button>
             </div>
+          ) : null}
 
-            <form className="auth-form" onSubmit={(event) => void handleSignInSubmit(event)}>
-              <label>
-                <span>Email</span>
-                <input
-                  autoComplete="email"
-                  onChange={(event) => setEmail(event.currentTarget.value)}
-                  placeholder="user@example.com"
-                  type="email"
-                  value={email}
-                />
-                {viewModel.signInFieldErrors.email ? (
-                  <small className="field-error">{viewModel.signInFieldErrors.email}</small>
-                ) : null}
-              </label>
+          {viewModel.screen === "auth" ||
+          (viewModel.screen === "loading" && !viewModel.isAuthenticated) ? (
+            <AuthPage
+              authMode={authMode}
+              email={email}
+              fieldErrors={viewModel.signInFieldErrors}
+              isLoading={viewModel.isLoading}
+              onAuthModeChange={setAuthMode}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onSubmit={(event) => void handleSignInSubmit(event)}
+              password={password}
+            />
+          ) : null}
 
-              <label>
-                <span>Password</span>
-                <input
-                  autoComplete="current-password"
-                  onChange={(event) => setPassword(event.currentTarget.value)}
-                  placeholder="Enter your password"
-                  type="password"
-                  value={password}
-                />
-                {viewModel.signInFieldErrors.password ? (
-                  <small className="field-error">{viewModel.signInFieldErrors.password}</small>
-                ) : null}
-              </label>
-
-              <button disabled={viewModel.isLoading} type="submit">
-                {viewModel.isLoading
-                  ? authMode === "sign-up"
-                    ? "Creating account..."
-                    : "Signing in..."
-                  : authMode === "sign-up"
-                    ? "Create account"
-                    : "Sign in"}
-              </button>
-            </form>
-          </section>
-        ) : null}
-
-        {viewModel.isAuthenticated ? (
-          <>
-            <section className="workspace-switcher">
-              <div className="workspace-switcher__copy">
-                <p className="workspace-switcher__eyebrow">Workspace</p>
-                <h3>{activeWorkspace?.name ?? "No workspace available"}</h3>
-                <p>
-                  {activeWorkspace
-                    ? getWorkspaceDescription(activeWorkspace)
-                    : "No personal or team workspace is available for this account yet."}
-                </p>
-              </div>
-
-              <div className="workspace-switcher__controls">
-                <label className="workspace-switcher__field">
-                  <span>Active workspace</span>
-                  <select
-                    disabled={pendingUi || viewModel.workspaces.length === 0}
-                    onChange={(event) =>
-                      void controller.selectWorkspace(event.currentTarget.value).catch(() => {})
-                    }
-                    value={viewModel.activeWorkspace?.id ?? ""}
-                  >
-                    {viewModel.workspaces.map((workspace) => (
-                      <option key={workspace.id} value={workspace.id}>
-                        {workspace.kind === "team" ? `Team: ${workspace.name}` : workspace.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {activeWorkspace ? (
-                  <div className="workspace-switcher__meta">
-                    <span className={`workspace-badge workspace-badge--${activeWorkspace.kind}`}>
-                      {getWorkspaceBadgeLabel(activeWorkspace)}
-                    </span>
-                    <span className="workspace-switcher__hint">
-                      {activeWorkspace.kind === "team"
-                        ? "Create, edit, complete, and delete actions apply to this shared team list."
-                        : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-                    </span>
-                  </div>
-                ) : null}
-
-                <form
-                  className="workspace-switcher__create"
-                  onSubmit={(event) => void handleCreateTeamSubmit(event)}
-                >
-                  <label className="workspace-switcher__field">
-                    <span>New team</span>
-                    <input
-                      disabled={!viewModel.canManageTodos}
-                      onChange={(event) => setDraftTeamName(event.currentTarget.value)}
-                      placeholder="Product Ops"
-                      value={draftTeamName}
-                    />
-                  </label>
-
-                  <button disabled={!viewModel.canManageTodos} type="submit">
-                    Create team
-                  </button>
-                </form>
-              </div>
-            </section>
-
-            <form className="composer" onSubmit={(event) => void handleCreateSubmit(event)}>
-              <label className="composer__field">
-                <span>New task</span>
-                <input
-                  disabled={!viewModel.canManageTodos}
-                  onChange={(event) => setDraftTitle(event.currentTarget.value)}
-                  placeholder={getComposerPlaceholder(activeWorkspace)}
-                  value={draftTitle}
-                />
-              </label>
-
-              <button disabled={!viewModel.canManageTodos} type="submit">
-                Add task
-              </button>
-            </form>
-
-            {viewModel.todoTitleError ? (
-              <p className="field-error field-error--spaced">{viewModel.todoTitleError}</p>
-            ) : null}
-
-            {editingTodoId ? (
-              <form className="editor" onSubmit={(event) => void handleSaveEdit(event)}>
-                <label className="composer__field">
-                  <span>Edit task</span>
-                  <input
-                    disabled={!viewModel.canManageTodos}
-                    onChange={(event) => setEditingTitle(event.currentTarget.value)}
-                    value={editingTitle}
-                  />
-                </label>
-
-                <div className="editor__actions">
-                  <button disabled={!viewModel.canManageTodos} type="submit">
-                    Save
-                  </button>
-                  <button
-                    disabled={!viewModel.canManageTodos}
-                    onClick={cancelEditing}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : null}
-
-            {viewModel.showEmptyState ? (
-              <section className="empty-state">
-                <p className="empty-state__eyebrow">
-                  {activeWorkspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
-                </p>
-                <h3>{emptyStateCopy.title}</h3>
-                <p>{emptyStateCopy.body}</p>
-              </section>
-            ) : null}
-
-            {viewModel.todos.length > 0 ? (
-              <ul className="todo-list">
-                {viewModel.todos.map((todo) => (
-                  <TodoRow
-                    disabled={!viewModel.canManageTodos}
-                    key={todo.id}
-                    onDelete={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
-                    onStartEdit={beginEditing}
-                    onToggleComplete={(entry) =>
-                      void (
-                        entry.completed
-                          ? controller.uncompleteTodo(entry.id)
-                          : controller.completeTodo(entry.id)
-                      ).catch(() => {})
-                    }
-                    todo={todo}
-                  />
-                ))}
-              </ul>
-            ) : null}
-
-            {viewModel.screen === "error" ? (
-              <section className="empty-state empty-state--error">
-                <p className="empty-state__eyebrow">Sync needs attention</p>
-                <h3>We could not load the latest todos.</h3>
-                <p>Try refreshing after checking your network or Supabase configuration.</p>
-              </section>
-            ) : null}
-          </>
-        ) : null}
+          {viewModel.isAuthenticated ? renderSignedInPage() : null}
+        </div>
       </section>
     </main>
   );

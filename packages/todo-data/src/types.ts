@@ -39,6 +39,23 @@ export interface TeamRecordRow {
   updated_at: string;
 }
 
+export interface TeamMemberRecordRow {
+  team_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface TeamInviteRecordRow {
+  id: string;
+  team_id: string;
+  created_by: string;
+  token: string;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TodoDatabase {
   public: {
     Tables: {
@@ -84,9 +101,61 @@ export interface TodoDatabase {
         };
         Relationships: [];
       };
+      team_members: {
+        Row: TeamMemberRecordRow;
+        Insert: {
+          team_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          team_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      team_invites: {
+        Row: TeamInviteRecordRow;
+        Insert: {
+          id?: string;
+          team_id: string;
+          created_by: string;
+          token: string;
+          expires_at: string;
+          revoked_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          team_id?: string;
+          created_by?: string;
+          token?: string;
+          expires_at?: string;
+          revoked_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_team_invite: {
+        Args: {
+          target_team_id: string;
+          target_expires_at?: string | null;
+        };
+        Returns: TeamInviteRecordRow;
+      };
+      redeem_team_invite: {
+        Args: {
+          target_token: string;
+        };
+        Returns: TeamMemberRecordRow;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

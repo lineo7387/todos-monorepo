@@ -9,7 +9,7 @@ Apply the migration files in `supabase/migrations/` to provision the workspace-s
 Current schema decisions:
 
 - Table: `public.todos`
-- Workspace tables: `public.teams`, `public.team_members`
+- Workspace tables: `public.teams`, `public.team_members`, `public.team_invites`
 - Ownership: every todo belongs to exactly one workspace scope
 - Personal scope: `owner_user_id` is set and `team_id` is null
 - Team scope: `team_id` is set and `owner_user_id` is null
@@ -40,6 +40,11 @@ Recommended redirect URL placeholders:
 ## Team Workspace Setup Notes
 
 - Team creators are automatically inserted into `public.team_members` by the database trigger.
+- Team invites are persisted in `public.team_invites` with token, expiry, and revocation metadata so later server-side join flows can validate active, expired, and revoked states safely.
+- Invite creation should go through the `public.create_team_invite(target_team_id, target_expires_at)` database function so the database can verify membership before inserting an invite row.
+- Invite redemption should go through the `public.redeem_team_invite(target_token)` database function so the database can validate the invite and insert the caller's membership idempotently.
+- `public.team_invites` is protected by row-level security and only visible to current team members; non-members must go through the constrained redemption function instead of reading invite rows directly.
+- Execute access for invite RPCs is explicitly limited to the Supabase `authenticated` role.
 - In the current first-release model, all team members can create, edit, complete, uncomplete, and delete tasks for that team.
 - Team roles, invitations, assignees, and comments are intentionally out of scope for the first release.
 
