@@ -15,6 +15,7 @@ import {
   refreshTodos,
   uncompleteTodo,
 } from "../src/index.ts";
+import type { CreateTodoInput, UpdateTodoInput } from "../../utils/src/index.ts";
 
 describe("createMemorySessionStorageAdapter", () => {
   test("stores and removes session values", async () => {
@@ -203,6 +204,7 @@ describe("todo mutation payloads", () => {
     ).toEqual({
       owner_user_id: "user-1",
       title: "plan release",
+      due_date: null,
     });
   });
 
@@ -218,6 +220,23 @@ describe("todo mutation payloads", () => {
     ).toEqual({
       team_id: "team-1",
       title: "team task",
+      due_date: null,
+    });
+  });
+
+  test("builds create payloads with an optional due date", () => {
+    expect(
+      buildCreatePayload(
+        {
+          kind: "personal",
+          ownerUserId: "user-1",
+        },
+        { title: "  publish roadmap  ", dueDate: "2026-05-01" },
+      ),
+    ).toEqual({
+      owner_user_id: "user-1",
+      title: "publish roadmap",
+      due_date: "2026-05-01",
     });
   });
 
@@ -255,6 +274,16 @@ describe("todo mutation payloads", () => {
       completed: true,
     });
   });
+
+  test("builds update payloads for due date changes", () => {
+    expect(
+      buildUpdatePayload({
+        dueDate: "2026-05-03",
+      }),
+    ).toEqual({
+      due_date: "2026-05-03",
+    });
+  });
 });
 
 describe("todo repository helpers", () => {
@@ -274,22 +303,29 @@ describe("todo repository helpers", () => {
       async createTeamInvite() {
         throw new Error("not used");
       },
+      async redeemTeamInvite() {
+        throw new Error("not used");
+      },
       async listTodos(workspace: { kind: "personal"; ownerUserId: string }) {
         return [
           {
             id: "todo-1",
             title: "refresh",
             completed: false,
+            dueDate: null,
             createdAt: "",
             updatedAt: "",
             workspace,
           },
         ];
       },
-      async createTodo() {
+      async createTodo(
+        _workspace: { kind: "personal"; ownerUserId: string },
+        _input: CreateTodoInput,
+      ) {
         throw new Error("not used");
       },
-      async updateTodo() {
+      async updateTodo(_todoId: string, _input: UpdateTodoInput) {
         throw new Error("not used");
       },
       async deleteTodo() {
@@ -302,6 +338,7 @@ describe("todo repository helpers", () => {
         id: "todo-1",
         title: "refresh",
         completed: false,
+        dueDate: null,
         createdAt: "",
         updatedAt: "",
         workspace: personalScope,
@@ -321,10 +358,16 @@ describe("todo repository helpers", () => {
       async createTeamInvite() {
         throw new Error("not used");
       },
+      async redeemTeamInvite() {
+        throw new Error("not used");
+      },
       async listTodos() {
         throw new Error("not used");
       },
-      async createTodo() {
+      async createTodo(
+        _workspace: { kind: "personal"; ownerUserId: string },
+        _input: CreateTodoInput,
+      ) {
         throw new Error("not used");
       },
       async updateTodo(todoId: string, input: { completed?: boolean }) {
@@ -334,6 +377,7 @@ describe("todo repository helpers", () => {
           id: todoId,
           title: "toggle",
           completed: input.completed ?? false,
+          dueDate: null,
           createdAt: "",
           updatedAt: "",
           workspace: personalScope,
@@ -562,6 +606,34 @@ describe("todo repository helpers", () => {
     });
   });
 
+  test("createSupabaseTodoRepository redeems a team invite through the redeem rpc", async () => {
+    const client = {
+      rpc(fn: string, args: { target_token: string }) {
+        expect(fn).toBe("redeem_team_invite");
+        expect(args).toEqual({
+          target_token: "invite-token",
+        });
+
+        return Promise.resolve({
+          data: {
+            team_id: "team-1",
+            user_id: "user-2",
+            created_at: "2026-04-21T00:00:00.000Z",
+          },
+          error: null,
+        });
+      },
+    };
+
+    const repository = createSupabaseTodoRepository(client as never);
+
+    await expect(repository.redeemTeamInvite("invite-token")).resolves.toEqual({
+      teamId: "team-1",
+      userId: "user-2",
+      createdAt: "2026-04-21T00:00:00.000Z",
+    });
+  });
+
   test("createSupabaseTodoRepository maps team todo rows from Supabase", async () => {
     const client = {
       from() {
@@ -579,6 +651,7 @@ describe("todo repository helpers", () => {
                         team_id: "team-1",
                         title: "review sprint board",
                         completed: true,
+                        due_date: "2026-05-04",
                         created_at: "2026-04-19T00:00:00.000Z",
                         updated_at: "2026-04-19T01:00:00.000Z",
                       },
@@ -605,6 +678,7 @@ describe("todo repository helpers", () => {
         id: "todo-2",
         title: "review sprint board",
         completed: true,
+        dueDate: "2026-05-04",
         createdAt: "2026-04-19T00:00:00.000Z",
         updatedAt: "2026-04-19T01:00:00.000Z",
         workspace: {

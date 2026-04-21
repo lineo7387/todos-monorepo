@@ -25,6 +25,7 @@ export interface TodoItem {
   id: TodoId;
   title: string;
   completed: boolean;
+  dueDate: string | null;
   createdAt: string;
   updatedAt: string;
   workspace: TodoWorkspaceScope;
@@ -32,6 +33,7 @@ export interface TodoItem {
 
 export interface CreateTodoInput {
   title: string;
+  dueDate?: string | null;
 }
 
 export interface CreateTeamInput {
@@ -53,9 +55,16 @@ export interface TeamInvite {
   updatedAt: string;
 }
 
+export interface TeamMembership {
+  teamId: TeamId;
+  userId: UserId;
+  createdAt: string;
+}
+
 export interface UpdateTodoInput {
   title?: string;
   completed?: boolean;
+  dueDate?: string | null;
 }
 
 export interface AuthSession {
@@ -87,6 +96,7 @@ export interface TodoRepository {
   listWorkspaces(userId: UserId): Promise<TodoWorkspace[]>;
   createTeam(userId: UserId, input: CreateTeamInput): Promise<TodoWorkspace>;
   createTeamInvite(teamId: TeamId, input?: CreateTeamInviteInput): Promise<TeamInvite>;
+  redeemTeamInvite(token: string): Promise<TeamMembership>;
   listTodos(workspace: TodoWorkspaceScope): Promise<TodoItem[]>;
   createTodo(workspace: TodoWorkspaceScope, input: CreateTodoInput): Promise<TodoItem>;
   updateTodo(todoId: TodoId, input: UpdateTodoInput): Promise<TodoItem>;
@@ -95,6 +105,7 @@ export interface TodoRepository {
 
 const TODO_TITLE_MAX_LENGTH = 280;
 const TEAM_NAME_MAX_LENGTH = 120;
+const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function normalizeTodoTitle(title: string): string {
   return title.trim().replace(/\s+/g, " ");
@@ -182,6 +193,20 @@ export function normalizeTeamName(name: string): string {
   return name.trim().replace(/\s+/g, " ");
 }
 
+export function normalizeInviteToken(token: string): string {
+  return token.trim();
+}
+
+export function normalizeDueDate(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length === 0 ? null : normalizedValue;
+}
+
 export function validateTeamName(name: string): ValidationResult<string> {
   const normalizedName = normalizeTeamName(name);
 
@@ -202,6 +227,57 @@ export function validateTeamName(name: string): ValidationResult<string> {
   return {
     ok: true,
     value: normalizedName,
+  };
+}
+
+export function validateInviteToken(token: string): ValidationResult<string> {
+  const normalizedToken = normalizeInviteToken(token);
+
+  if (normalizedToken.length === 0) {
+    return {
+      ok: false,
+      error: "Invite code is required.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: normalizedToken,
+  };
+}
+
+export function validateDueDate(value: string | null | undefined): ValidationResult<string | null> {
+  const normalizedValue = normalizeDueDate(value);
+
+  if (normalizedValue === null) {
+    return {
+      ok: true,
+      value: null,
+    };
+  }
+
+  if (!DUE_DATE_PATTERN.test(normalizedValue)) {
+    return {
+      ok: false,
+      error: "Due date must use the YYYY-MM-DD format.",
+    };
+  }
+
+  const parsedDate = new Date(`${normalizedValue}T00:00:00.000Z`);
+
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== normalizedValue
+  ) {
+    return {
+      ok: false,
+      error: "Enter a valid due date.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: normalizedValue,
   };
 }
 

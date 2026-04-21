@@ -8,6 +8,7 @@ import type {
   CreateTodoInput,
   PasswordSignInInput,
   TeamInvite,
+  TeamMembership,
   TodoId,
   TodoItem,
   TodoRepository,
@@ -34,6 +35,7 @@ function createTodo(
     id: "todo-1",
     title: "Ship cross-platform todos",
     completed: false,
+    dueDate: null,
     createdAt: "2026-04-19T00:00:00.000Z",
     updatedAt: "2026-04-19T00:00:00.000Z",
     workspace,
@@ -112,6 +114,13 @@ function createTodoRepository(overrides: Partial<TodoRepository> = {}): TodoRepo
         updatedAt: "2026-04-21T00:00:00.000Z",
       };
     },
+    async redeemTeamInvite(token: string): Promise<TeamMembership> {
+      return {
+        teamId: token === "joined-team-token" ? "team-joined" : "team-1",
+        userId: "user-1",
+        createdAt: "2026-04-21T00:00:00.000Z",
+      };
+    },
     async listTodos(workspace: TodoWorkspaceScope) {
       return [createTodo({}, workspace)];
     },
@@ -120,6 +129,7 @@ function createTodoRepository(overrides: Partial<TodoRepository> = {}): TodoRepo
         {
           id: "todo-created",
           title: input.title.trim(),
+          dueDate: input.dueDate ?? null,
         },
         workspace,
       );
@@ -129,6 +139,7 @@ function createTodoRepository(overrides: Partial<TodoRepository> = {}): TodoRepo
         id: todoId,
         title: input.title ?? "Updated title",
         completed: input.completed ?? false,
+        dueDate: input.dueDate ?? null,
       });
     },
     async deleteTodo() {},
@@ -276,6 +287,7 @@ describe("createTodoAppController", () => {
               {
                 id: "team-created",
                 title: input.title.trim(),
+                dueDate: input.dueDate ?? null,
               },
               workspace,
             ),
@@ -289,6 +301,7 @@ describe("createTodoAppController", () => {
 
     const createPromise = controller.createTodo({
       title: "  Draft team handoff  ",
+      dueDate: "2026-04-30",
     });
     await Promise.resolve();
     await Promise.resolve();
@@ -297,6 +310,7 @@ describe("createTodoAppController", () => {
       expect.objectContaining({
         id: "optimistic-1",
         title: "Draft team handoff",
+        dueDate: "2026-04-30",
         workspace: {
           kind: "team",
           teamId: "team-1",
@@ -309,6 +323,7 @@ describe("createTodoAppController", () => {
         {
           id: "team-created",
           title: "Draft team handoff",
+          dueDate: "2026-04-30",
         },
         {
           kind: "team",
@@ -322,6 +337,7 @@ describe("createTodoAppController", () => {
         {
           id: "team-created",
           title: "Draft team handoff",
+          dueDate: "2026-04-30",
         },
         {
           kind: "team",
@@ -373,6 +389,41 @@ describe("createTodoAppController", () => {
           teamId: "team-1",
         },
       ),
+    ]);
+  });
+
+  test("updates todo due dates through the shared controller", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository(),
+    });
+
+    await controller.initialize();
+
+    await expect(
+      controller.updateTodo("todo-1", {
+        dueDate: "2026-05-02",
+      }),
+    ).resolves.toEqual(
+      createTodo({
+        id: "todo-1",
+        title: "Updated title",
+        completed: false,
+        dueDate: "2026-05-02",
+      }),
+    );
+
+    expect(controller.getState().todos).toEqual([
+      createTodo({
+        id: "todo-1",
+        title: "Updated title",
+        completed: false,
+        dueDate: "2026-05-02",
+      }),
     ]);
   });
 
@@ -575,6 +626,77 @@ describe("createTodoAppController", () => {
       ),
     ]);
     expect(controller.getState().lastMutation).toBe("refresh");
+  });
+
+  test("redeems a team invite, refreshes memberships, and selects the joined team", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    let workspaceListCallCount = 0;
+    const joinedWorkspace = {
+      id: "team-joined",
+      kind: "team" as const,
+      name: "Research",
+      teamId: "team-joined",
+    };
+    const redeemedTokens: string[] = [];
+    const listTodoScopes: TodoWorkspaceScope[] = [];
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async redeemTeamInvite(token) {
+          redeemedTokens.push(token);
+
+          return {
+            teamId: "team-joined",
+            userId: "user-1",
+            createdAt: "2026-04-21T00:00:00.000Z",
+          };
+        },
+        async listWorkspaces(userId) {
+          workspaceListCallCount += 1;
+
+          if (workspaceListCallCount === 1) {
+            return [createPersonalWorkspace(userId), createTeamWorkspace()];
+          }
+
+          return [createPersonalWorkspace(userId), createTeamWorkspace(), joinedWorkspace];
+        },
+        async listTodos(workspace) {
+          listTodoScopes.push(workspace);
+
+          return workspace.kind === "team" && workspace.teamId === "team-joined"
+            ? [createTodo({ id: "joined-team-todo" }, workspace)]
+            : [createTodo({}, workspace)];
+        },
+      }),
+    });
+
+    await controller.initialize();
+
+    await expect(controller.redeemTeamInvite("  joined-team-token  ")).resolves.toEqual(
+      joinedWorkspace,
+    );
+
+    expect(redeemedTokens).toEqual(["joined-team-token"]);
+    expect(listTodoScopes).toEqual([
+      {
+        kind: "personal",
+        ownerUserId: "user-1",
+      },
+      {
+        kind: "team",
+        teamId: "team-joined",
+      },
+    ]);
+    expect(controller.getState().workspaces).toEqual([
+      createPersonalWorkspace("user-1"),
+      createTeamWorkspace(),
+      joinedWorkspace,
+    ]);
+    expect(controller.getState().activeWorkspaceId).toBe("team-joined");
+    expect(controller.getState().lastMutation).toBe("redeem-team-invite");
   });
 
   test("clears session and workspace state after sign out", async () => {

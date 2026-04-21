@@ -27,6 +27,7 @@ export interface TodoRecordRow {
   team_id: string | null;
   title: string;
   completed: boolean;
+  due_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +73,7 @@ export interface TodoDatabase {
           team_id?: string | null;
           title: string;
           completed?: boolean;
+          due_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -82,6 +84,7 @@ export interface TodoDatabase {
           team_id?: string | null;
           title?: string;
           completed?: boolean;
+          due_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };

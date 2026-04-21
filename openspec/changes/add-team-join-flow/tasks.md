@@ -16,12 +16,12 @@
 - [x] 3.1 Extend membership queries or sync primitives to include teams joined through invite redemption
 - [x] 3.2 Refresh or invalidate workspace navigation data after a successful join so the new team appears immediately
 - [x] 3.3 Add UI for an existing team member to generate and share a team invite
-- [ ] 3.4 Add UI for an authenticated user to open an invite link or submit an invite code and join the team
-- [ ] 3.5 Show clear success and failure states for invite acceptance without interrupting the existing personal workspace flow
+- [x] 3.4 Add UI for an authenticated user to open an invite link or submit an invite code and join the team
+- [x] 3.5 Show clear success and failure states for invite acceptance without interrupting the existing personal workspace flow
 
 ## 4. Task filtering and lightweight time model
 
-- [ ] 4.1 Extend task storage, shared state, and UI models to support an optional `dueDate`
+- [x] 4.1 Extend task storage, shared state, and UI models to support an optional `dueDate`
 - [ ] 4.2 Add workspace task filters for all, active, and completed items in personal and team task views
 - [ ] 4.3 Add initial date-based task views such as due today or upcoming that only include tasks with `dueDate`
 - [ ] 4.4 Add a lightweight calendar day view or selected-date task inspection flow without implementing full scheduling features

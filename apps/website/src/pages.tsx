@@ -30,8 +30,10 @@ export interface AuthPageProps {
 export interface WorkspacePageProps {
   canManageTodos: boolean;
   draftTitle: string;
+  draftDueDate: string;
   editingTodoId: string | null;
   editingTitle: string;
+  editingDueDate: string;
   emptyStateCopy: {
     title: string;
     body: string;
@@ -45,7 +47,9 @@ export interface WorkspacePageProps {
   teamInviteMessage: string | null;
   onCreateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDraftTitleChange: (value: string) => void;
+  onDraftDueDateChange: (value: string) => void;
   onEditTitleChange: (value: string) => void;
+  onEditDueDateChange: (value: string) => void;
   onCreateTeamInvite: () => void;
   onNavigate: (route: WebsiteRoute) => void;
   onSaveEdit: (event: FormEvent<HTMLFormElement>) => void;
@@ -76,7 +80,17 @@ export interface TeamListPageProps {
 }
 
 export interface JoinTeamPageProps {
+  feedback: {
+    kind: "error" | "notice";
+    message: string;
+  } | null;
+  inviteCode: string;
+  isSubmitting: boolean;
+  onDismissFeedback: () => void;
   onNavigate: (route: WebsiteRoute) => void;
+  onInviteCodeChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  source: "link" | "manual";
 }
 
 export interface CreateTeamPageProps {
@@ -137,6 +151,14 @@ function formatDateTime(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatDueDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function getWorkspaceBadgeLabel(workspace: WebsiteWorkspace): string {
@@ -289,6 +311,7 @@ function TodoRow({
         <div className="todo-card__meta">
           <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
           <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
+          {todo.dueDate ? <span>Due {formatDueDate(todo.dueDate)}</span> : null}
         </div>
         <p>{todo.title}</p>
       </div>
@@ -462,8 +485,10 @@ export function DashboardPage({ onNavigate, personalWorkspace, teamCount }: Dash
 export function WorkspacePage({
   canManageTodos,
   draftTitle,
+  draftDueDate,
   editingTodoId,
   editingTitle,
+  editingDueDate,
   emptyStateCopy,
   todos,
   todoTitleError,
@@ -474,7 +499,9 @@ export function WorkspacePage({
   teamInviteMessage,
   onCreateSubmit,
   onDraftTitleChange,
+  onDraftDueDateChange,
   onEditTitleChange,
+  onEditDueDateChange,
   onCreateTeamInvite,
   onNavigate,
   onSaveEdit,
@@ -596,6 +623,16 @@ export function WorkspacePage({
           />
         </label>
 
+        <label className="composer__field composer__field--date">
+          <span>Due date</span>
+          <input
+            disabled={!canManageTodos}
+            onChange={(event) => onDraftDueDateChange(event.currentTarget.value)}
+            type="date"
+            value={draftDueDate}
+          />
+        </label>
+
         <button disabled={!canManageTodos} type="submit">
           Add task
         </button>
@@ -611,6 +648,16 @@ export function WorkspacePage({
               disabled={!canManageTodos}
               onChange={(event) => onEditTitleChange(event.currentTarget.value)}
               value={editingTitle}
+            />
+          </label>
+
+          <label className="composer__field">
+            <span>Due date</span>
+            <input
+              disabled={!canManageTodos}
+              onChange={(event) => onEditDueDateChange(event.currentTarget.value)}
+              type="date"
+              value={editingDueDate}
             />
           </label>
 
@@ -704,15 +751,25 @@ export function TeamListPage({ onNavigate, teams }: TeamListPageProps) {
   );
 }
 
-export function JoinTeamPage({ onNavigate }: JoinTeamPageProps) {
+export function JoinTeamPage({
+  feedback,
+  inviteCode,
+  isSubmitting,
+  onDismissFeedback,
+  onNavigate,
+  onInviteCodeChange,
+  onSubmit,
+  source,
+}: JoinTeamPageProps) {
   return (
     <>
       <section className="page-intro">
         <div>
           <p className="page-eyebrow">Join team</p>
-          <h2>Invite acceptance will live here.</h2>
+          <h2>Join a shared workspace with an invite.</h2>
           <p>
-            This route is reserved for the invite link and code-entry flow that lands in task `3.4`.
+            Open a shared invite link or paste the invite code directly. After a successful join, we
+            will take you straight into the team detail page.
           </p>
         </div>
         <div className="page-intro__actions">
@@ -733,13 +790,66 @@ export function JoinTeamPage({ onNavigate }: JoinTeamPageProps) {
         </div>
       </section>
 
-      <section className="empty-state">
-        <p className="empty-state__eyebrow">Route ready</p>
-        <h3>Dedicated join page is in place.</h3>
-        <p>
-          The actual invite redemption UI and success or failure states will be added in the later
-          join-flow tasks.
-        </p>
+      <section className="join-team-layout">
+        <form className="join-team-panel" onSubmit={onSubmit}>
+          <div>
+            <p className="page-eyebrow">
+              {source === "link" ? "Invite link opened" : "Invite code"}
+            </p>
+            <h3>
+              {source === "link"
+                ? "We prefilled the invite for you."
+                : "Paste an invite to continue."}
+            </h3>
+            <p className="join-team-panel__body">
+              Invite acceptance stays in the authenticated flow so the shared workspace appears in
+              your dashboard and team navigation as soon as membership is granted.
+            </p>
+          </div>
+
+          {feedback ? (
+            <div
+              className={`feedback-banner ${feedback.kind === "notice" ? "is-notice" : "is-error"}`}
+            >
+              <p>{feedback.message}</p>
+              <button onClick={onDismissFeedback} type="button">
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+
+          <label className="join-team-panel__field">
+            <span>Invite code</span>
+            <input
+              autoCapitalize="none"
+              autoCorrect="off"
+              name="inviteCode"
+              onChange={(event) => onInviteCodeChange(event.currentTarget.value)}
+              placeholder="Paste invite code"
+              value={inviteCode}
+            />
+          </label>
+
+          <button disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Joining team..." : "Join team"}
+          </button>
+        </form>
+
+        <section className="join-team-aside">
+          <p className="page-eyebrow">What happens next</p>
+          <h3>Membership sync keeps the workspace list current.</h3>
+          <p>
+            The join action redeems the invite, refreshes your joined teams, and lands you in the
+            target team workspace while keeping your personal workspace available in navigation.
+          </p>
+          <RouteLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "team-list" }}
+          >
+            Browse current teams
+          </RouteLink>
+        </section>
       </section>
     </>
   );

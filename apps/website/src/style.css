@@ -629,6 +629,43 @@ h3 {
   max-width: 34rem;
 }
 
+.join-team-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 16px;
+}
+
+.join-team-panel,
+.join-team-aside {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.join-team-panel h3,
+.join-team-aside h3 {
+  margin-top: 0.45rem;
+  font: 600 1.8rem/1.08 var(--serif);
+}
+
+.join-team-panel__body,
+.join-team-aside p:last-of-type {
+  color: var(--text-muted);
+}
+
+.join-team-panel__field {
+  display: grid;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.join-team-panel .feedback-banner {
+  margin: 0;
+}
+
 .workspace-badge {
   width: fit-content;
   border-radius: 999px;
@@ -698,6 +735,10 @@ h3 {
 .composer {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
+}
+
+.composer__field--date {
+  min-width: 180px;
 }
 
 .editor__actions {
@@ -825,6 +866,10 @@ h3 {
   }
 
   .page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .join-team-layout {
     grid-template-columns: 1fr;
   }
 

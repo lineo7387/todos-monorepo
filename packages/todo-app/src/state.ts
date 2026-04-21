@@ -5,6 +5,7 @@ import type {
   CreateTeamInput,
   CreateTodoInput,
   TeamInvite,
+  TeamMembership,
   PasswordSignInInput,
   TodoId,
   TodoItem,
@@ -14,8 +15,12 @@ import type {
   UpdateTodoInput,
 } from "../../utils/src/index.ts";
 import {
+  normalizeDueDate,
+  normalizeInviteToken,
   normalizeTodoTitle,
+  validateDueDate,
   validateEmailAddress,
+  validateInviteToken,
   validateTeamName,
   validateTodoTitle,
 } from "../../utils/src/index.ts";
@@ -27,6 +32,7 @@ export type TodoMutationKind =
   | "refresh"
   | "create-team"
   | "create-team-invite"
+  | "redeem-team-invite"
   | "create"
   | "update"
   | "delete"
@@ -63,6 +69,7 @@ export interface TodoAppController {
   signUpWithPassword(input: PasswordSignInInput): Promise<AuthSession | null>;
   createTeam(input: CreateTeamInput): Promise<TodoWorkspace>;
   createTeamInvite(teamId: string, input?: CreateTeamInviteInput): Promise<TeamInvite>;
+  redeemTeamInvite(token: string): Promise<TodoWorkspace>;
   syncWorkspaces(preferredWorkspaceId?: string | null): Promise<TodoWorkspace[]>;
   selectWorkspace(workspaceId: string): Promise<TodoItem[]>;
   refresh(): Promise<TodoItem[]>;
@@ -153,6 +160,8 @@ function getPendingMessage(state: TodoAppState): string | null {
       return "Creating your team workspace...";
     case "create-team-invite":
       return "Creating your invite...";
+    case "redeem-team-invite":
+      return "Joining your team...";
     case "delete":
       return "Deleting task...";
     case "sign-up":
@@ -174,6 +183,12 @@ export function validateTodoDraft(title: string): string | null {
   const validation = validateTodoTitle(title);
 
   return validation.ok ? null : (validation.error ?? "Todo title is invalid.");
+}
+
+export function validateTodoDueDate(value: string | null | undefined): string | null {
+  const validation = validateDueDate(value);
+
+  return validation.ok ? null : (validation.error ?? "Due date is invalid.");
 }
 
 export function validateSignInFields(input: PasswordSignInInput): TodoAppSignInFieldErrors {
@@ -764,6 +779,68 @@ class TodoAppControllerImpl implements TodoAppController {
     }
   }
 
+  async redeemTeamInvite(token: string): Promise<TodoWorkspace> {
+    const validatedToken = validateInviteToken(token);
+
+    if (!validatedToken.ok || !validatedToken.value) {
+      const message = validatedToken.error ?? "Invite code is invalid.";
+
+      this.setState({
+        lastError: message,
+        lastErrorKind: "validation",
+        signInFieldErrors: {
+          email: null,
+          password: null,
+        },
+        todoTitleError: null,
+        lastMutation: "redeem-team-invite",
+      });
+
+      throw new Error(message);
+    }
+
+    const session = ensureAuthenticatedSession(this.state.session);
+    const snapshot = this.state;
+
+    this.setState({
+      pendingMutations: snapshot.pendingMutations + 1,
+      lastError: null,
+      lastErrorKind: null,
+      signInFieldErrors: {
+        email: null,
+        password: null,
+      },
+      todoTitleError: null,
+      lastMutation: "redeem-team-invite",
+      status: "ready",
+    });
+
+    try {
+      const membership = await this.dependencies.todoRepository.redeemTeamInvite(
+        normalizeInviteToken(validatedToken.value),
+      );
+      const joinedWorkspace = await this.syncMembershipWorkspace(session, membership);
+
+      this.setState({
+        pendingMutations: Math.max(this.state.pendingMutations - 1, 0),
+        lastError: null,
+        lastErrorKind: null,
+        signInFieldErrors: {
+          email: null,
+          password: null,
+        },
+        todoTitleError: null,
+        lastMutation: "redeem-team-invite",
+        status: "ready",
+      });
+
+      return joinedWorkspace;
+    } catch (error) {
+      await this.handleMutationFailure(snapshot, "redeem-team-invite", error);
+      throw error;
+    }
+  }
+
   async selectWorkspace(workspaceId: string): Promise<TodoItem[]> {
     ensureAuthenticatedSession(this.state.session);
     const workspace = this.state.workspaces.find((entry) => entry.id === workspaceId);
@@ -824,20 +901,21 @@ class TodoAppControllerImpl implements TodoAppController {
 
   createTodo(input: CreateTodoInput): Promise<TodoItem> {
     const titleError = validateTodoDraft(input.title);
+    const dueDateError = validateTodoDueDate(input.dueDate);
 
-    if (titleError) {
+    if (titleError || dueDateError) {
       this.setState({
-        lastError: titleError,
+        lastError: titleError ?? dueDateError,
         lastErrorKind: "validation",
         signInFieldErrors: {
           email: null,
           password: null,
         },
-        todoTitleError: titleError,
+        todoTitleError: titleError ?? dueDateError,
         lastMutation: "create",
       });
 
-      return Promise.reject(new Error(titleError));
+      return Promise.reject(new Error(titleError ?? dueDateError ?? "Todo is invalid."));
     }
 
     return this.enqueueMutation("create", async () => {
@@ -881,12 +959,32 @@ class TodoAppControllerImpl implements TodoAppController {
       }
     }
 
+    if (input.dueDate !== undefined) {
+      const dueDateError = validateTodoDueDate(input.dueDate);
+
+      if (dueDateError) {
+        this.setState({
+          lastError: dueDateError,
+          lastErrorKind: "validation",
+          signInFieldErrors: {
+            email: null,
+            password: null,
+          },
+          todoTitleError: dueDateError,
+          lastMutation: "update",
+        });
+
+        return Promise.reject(new Error(dueDateError));
+      }
+    }
+
     return this.enqueueMutation("update", async () => {
       const existing = this.requireTodo(todoId);
       const optimisticTodo: TodoItem = {
         ...existing,
         ...(input.title !== undefined ? { title: normalizeTodoTitle(input.title) } : {}),
         ...(input.completed !== undefined ? { completed: input.completed } : {}),
+        ...(input.dueDate !== undefined ? { dueDate: normalizeDueDate(input.dueDate) } : {}),
       };
 
       return {
@@ -1146,6 +1244,39 @@ class TodoAppControllerImpl implements TodoAppController {
     return workspaces[0] ?? null;
   }
 
+  private async syncMembershipWorkspace(
+    session: AuthSession,
+    membership: TeamMembership,
+  ): Promise<TodoWorkspace> {
+    const workspaces = await this.dependencies.todoRepository.listWorkspaces(session.userId);
+    const activeWorkspace = this.resolveActiveWorkspace(workspaces, membership.teamId);
+
+    if (!activeWorkspace) {
+      throw new Error("The joined team workspace could not be loaded.");
+    }
+
+    const todos = await this.dependencies.todoRepository.listTodos(
+      getWorkspaceScope(activeWorkspace),
+    );
+
+    this.setState({
+      workspaces,
+      activeWorkspaceId: activeWorkspace.id,
+      todos,
+      lastError: null,
+      lastErrorKind: null,
+      signInFieldErrors: {
+        email: null,
+        password: null,
+      },
+      todoTitleError: null,
+      lastMutation: "refresh",
+      status: "ready",
+    });
+
+    return activeWorkspace;
+  }
+
   private buildOptimisticTodo(workspace: TodoWorkspaceScope, input: CreateTodoInput): TodoItem {
     this.optimisticIdCounter += 1;
     const validation = validateTodoTitle(input.title);
@@ -1160,6 +1291,7 @@ class TodoAppControllerImpl implements TodoAppController {
       id: `optimistic-${this.optimisticIdCounter}`,
       title: validation.value,
       completed: false,
+      dueDate: normalizeDueDate(input.dueDate),
       createdAt: now,
       updatedAt: now,
       workspace,

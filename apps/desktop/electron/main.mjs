@@ -37,7 +37,7 @@ function createMainWindow() {
   return window;
 }
 
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   createMainWindow();
 
   app.on("activate", () => {

@@ -1,6 +1,7 @@
 import type {
   CreateTeamInviteInput,
   TeamInvite,
+  TeamMembership,
   CreateTeamInput,
   CreateTodoInput,
   TodoId,
@@ -12,11 +13,13 @@ import type {
 } from "../../utils/src/index.ts";
 import {
   createPersonalWorkspace,
+  validateDueDate,
   validateTeamName,
   validateTodoTitle,
 } from "../../utils/src/index.ts";
 
 import type {
+  TeamMemberRecordRow,
   TeamMemberWorkspaceRow,
   TeamInviteRecordRow,
   TeamRecordRow,
@@ -31,6 +34,7 @@ function mapTodoRecord(record: TodoRecordRow): TodoItem {
       id: record.id,
       title: record.title,
       completed: record.completed,
+      dueDate: record.due_date,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       workspace: {
@@ -45,6 +49,7 @@ function mapTodoRecord(record: TodoRecordRow): TodoItem {
       id: record.id,
       title: record.title,
       completed: record.completed,
+      dueDate: record.due_date,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       workspace: {
@@ -79,6 +84,14 @@ export function mapTeamInvite(record: TeamInviteRecordRow): TeamInvite {
   };
 }
 
+export function mapTeamMembership(record: TeamMemberRecordRow): TeamMembership {
+  return {
+    teamId: record.team_id,
+    userId: record.user_id,
+    createdAt: record.created_at,
+  };
+}
+
 function mapJoinedTeamWorkspace(record: TeamMemberWorkspaceRow): TodoWorkspace {
   const team = Array.isArray(record.team) ? record.team[0] : record.team;
 
@@ -91,21 +104,28 @@ function mapJoinedTeamWorkspace(record: TeamMemberWorkspaceRow): TodoWorkspace {
 
 function buildCreatePayload(workspace: TodoWorkspaceScope, input: CreateTodoInput) {
   const validatedTitle = validateTodoTitle(input.title);
+  const validatedDueDate = validateDueDate(input.dueDate);
 
   if (!validatedTitle.ok || !validatedTitle.value) {
     throw new Error(validatedTitle.error ?? "Todo title is invalid.");
+  }
+
+  if (!validatedDueDate.ok) {
+    throw new Error(validatedDueDate.error ?? "Due date is invalid.");
   }
 
   if (workspace.kind === "personal") {
     return {
       owner_user_id: workspace.ownerUserId,
       title: validatedTitle.value,
+      due_date: validatedDueDate.value,
     };
   }
 
   return {
     team_id: workspace.teamId,
     title: validatedTitle.value,
+    due_date: validatedDueDate.value,
   };
 }
 
@@ -137,6 +157,16 @@ function buildUpdatePayload(input: UpdateTodoInput) {
 
   if (input.completed !== undefined) {
     payload.completed = input.completed;
+  }
+
+  if (input.dueDate !== undefined) {
+    const validatedDueDate = validateDueDate(input.dueDate);
+
+    if (!validatedDueDate.ok) {
+      throw new Error(validatedDueDate.error ?? "Due date is invalid.");
+    }
+
+    payload.due_date = validatedDueDate.value;
   }
 
   if (Object.keys(payload).length === 0) {
@@ -197,6 +227,18 @@ export class SupabaseTodoRepository implements TodoRepository {
     }
 
     return mapTeamInvite(data as TeamInviteRecordRow);
+  }
+
+  async redeemTeamInvite(token: string): Promise<TeamMembership> {
+    const { data, error } = await this.client.rpc("redeem_team_invite", {
+      target_token: token,
+    } as never);
+
+    if (error) {
+      throw error;
+    }
+
+    return mapTeamMembership(data as TeamMemberRecordRow);
   }
 
   async listTodos(workspace: TodoWorkspaceScope): Promise<TodoItem[]> {

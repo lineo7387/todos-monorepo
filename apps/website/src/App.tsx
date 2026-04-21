@@ -114,6 +114,10 @@ function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
 }
 
 export function App() {
+  const [joinFeedback, setJoinFeedback] = useState<{
+    kind: "error" | "notice";
+    message: string;
+  } | null>(null);
   const [bootstrap] = useState(createWebsiteBootstrap);
   const [state, setState] = useState<TodoAppState>(
     () => bootstrap.controller?.getState() ?? FALLBACK_STATE,
@@ -126,13 +130,16 @@ export function App() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [draftTitle, setDraftTitle] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState("");
   const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingDueDate, setEditingDueDate] = useState("");
   const [teamInviteCode, setTeamInviteCode] = useState("");
   const [teamInviteLink, setTeamInviteLink] = useState<string | null>(null);
   const [teamInviteExpiresAt, setTeamInviteExpiresAt] = useState<string | null>(null);
   const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
+  const [joinInviteCode, setJoinInviteCode] = useState("");
 
   useEffect(() => {
     if (!bootstrap.controller) {
@@ -166,6 +173,19 @@ export function App() {
     setTeamInviteMessage(null);
   }, [route.name, route.name === "team-detail" ? route.teamId : null]);
 
+  useEffect(() => {
+    if (route.name !== "join-team") {
+      setJoinFeedback(null);
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get("invite");
+
+    setJoinInviteCode(invite ?? "");
+    setJoinFeedback(null);
+  }, [route.name]);
+
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
@@ -192,6 +212,14 @@ export function App() {
 
     setRoute(nextRoute);
     setRouteNotice(null);
+  }
+
+  function handleJoinInviteCodeChange(value: string) {
+    setJoinInviteCode(value);
+
+    if (joinFeedback) {
+      setJoinFeedback(null);
+    }
   }
 
   useEffect(() => {
@@ -262,9 +290,11 @@ export function App() {
     await controller
       .createTodo({
         title: draftTitle,
+        dueDate: draftDueDate,
       })
       .then(() => {
         setDraftTitle("");
+        setDraftDueDate("");
       })
       .catch(() => {});
   }
@@ -297,10 +327,12 @@ export function App() {
     await controller
       .updateTodo(editingTodoId, {
         title: editingTitle,
+        dueDate: editingDueDate,
       })
       .then(() => {
         setEditingTodoId(null);
         setEditingTitle("");
+        setEditingDueDate("");
       })
       .catch(() => {});
   }
@@ -308,11 +340,13 @@ export function App() {
   function beginEditing(todo: TodoAppState["todos"][number]) {
     setEditingTodoId(todo.id);
     setEditingTitle(todo.title);
+    setEditingDueDate(todo.dueDate ?? "");
   }
 
   function cancelEditing() {
     setEditingTodoId(null);
     setEditingTitle("");
+    setEditingDueDate("");
   }
 
   async function copyToClipboard(value: string, successMessage: string) {
@@ -341,6 +375,39 @@ export function App() {
         setTeamInviteMessage("Invite ready to share.");
       })
       .catch(() => {});
+  }
+
+  async function handleJoinTeamSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!controller) {
+      return;
+    }
+
+    setJoinFeedback(null);
+
+    await controller
+      .redeemTeamInvite(joinInviteCode)
+      .then((workspace) => {
+        setJoinInviteCode("");
+        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
+        setRouteNotice(
+          `You can now work in ${workspace.name}. My workspace stays available from the top navigation.`,
+        );
+      })
+      .catch((error: unknown) => {
+        const latestState = controller.getState();
+        const message =
+          latestState.lastError ??
+          (error instanceof Error && error.message.length > 0
+            ? error.message
+            : "We couldn't accept that invite. Check the code and try again.");
+
+        setJoinFeedback({
+          kind: latestState.lastErrorKind === "notice" ? "notice" : "error",
+          message,
+        });
+      });
   }
 
   function renderSignedInPage() {
@@ -372,8 +439,10 @@ export function App() {
           <WorkspacePage
             canManageTodos={viewModel.canManageTodos}
             draftTitle={draftTitle}
+            draftDueDate={draftDueDate}
             editingTodoId={editingTodoId}
             editingTitle={editingTitle}
+            editingDueDate={editingDueDate}
             emptyStateCopy={getEmptyStateCopy(personalWorkspace)}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
@@ -382,7 +451,9 @@ export function App() {
             onCopyTeamInviteLink={() => {}}
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
             onDraftTitleChange={setDraftTitle}
+            onDraftDueDateChange={setDraftDueDate}
             onEditTitleChange={setEditingTitle}
+            onEditDueDateChange={setEditingDueDate}
             onNavigate={navigate}
             onSaveEdit={(event) => void handleSaveEdit(event)}
             onStartEdit={beginEditing}
@@ -409,8 +480,10 @@ export function App() {
           <WorkspacePage
             canManageTodos={viewModel.canManageTodos}
             draftTitle={draftTitle}
+            draftDueDate={draftDueDate}
             editingTodoId={editingTodoId}
             editingTitle={editingTitle}
+            editingDueDate={editingDueDate}
             emptyStateCopy={getEmptyStateCopy(routedTeamWorkspace)}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
@@ -427,7 +500,9 @@ export function App() {
             }
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
             onDraftTitleChange={setDraftTitle}
+            onDraftDueDateChange={setDraftDueDate}
             onEditTitleChange={setEditingTitle}
+            onEditDueDateChange={setEditingDueDate}
             onNavigate={navigate}
             onSaveEdit={(event) => void handleSaveEdit(event)}
             onStartEdit={beginEditing}
@@ -448,7 +523,22 @@ export function App() {
           />
         );
       case "join-team":
-        return <JoinTeamPage onNavigate={navigate} />;
+        return (
+          <JoinTeamPage
+            feedback={joinFeedback}
+            inviteCode={joinInviteCode}
+            isSubmitting={pendingUi}
+            onDismissFeedback={() => setJoinFeedback(null)}
+            onInviteCodeChange={handleJoinInviteCodeChange}
+            onNavigate={navigate}
+            onSubmit={(event) => void handleJoinTeamSubmit(event)}
+            source={
+              joinInviteCode.length > 0 && new URLSearchParams(window.location.search).has("invite")
+                ? "link"
+                : "manual"
+            }
+          />
+        );
       case "create-team":
         return (
           <CreateTeamPage
@@ -536,7 +626,8 @@ export function App() {
           ) : null}
           {routeNotice ? <p className="info-banner">{routeNotice}</p> : null}
 
-          {viewModel.errorMessage ? (
+          {viewModel.errorMessage &&
+          !(route.name === "join-team" && state.lastMutation === "redeem-team-invite") ? (
             <div
               className={`feedback-banner ${
                 viewModel.errorKind === "validation"

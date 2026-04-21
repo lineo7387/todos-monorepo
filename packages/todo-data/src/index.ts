@@ -26,6 +26,7 @@ export {
   completeTodo,
   createSupabaseTodoRepository,
   mapTeamInvite,
+  mapTeamMembership,
   mapTodoRecord,
   refreshTodos,
   uncompleteTodo,
