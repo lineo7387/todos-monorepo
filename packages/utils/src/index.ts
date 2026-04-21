@@ -38,6 +38,21 @@ export interface CreateTeamInput {
   name: string;
 }
 
+export interface CreateTeamInviteInput {
+  expiresAt?: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  teamId: TeamId;
+  createdBy: UserId;
+  token: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UpdateTodoInput {
   title?: string;
   completed?: boolean;
@@ -71,6 +86,7 @@ export interface AuthRepository {
 export interface TodoRepository {
   listWorkspaces(userId: UserId): Promise<TodoWorkspace[]>;
   createTeam(userId: UserId, input: CreateTeamInput): Promise<TodoWorkspace>;
+  createTeamInvite(teamId: TeamId, input?: CreateTeamInviteInput): Promise<TeamInvite>;
   listTodos(workspace: TodoWorkspaceScope): Promise<TodoItem[]>;
   createTodo(workspace: TodoWorkspaceScope, input: CreateTodoInput): Promise<TodoItem>;
   updateTodo(todoId: TodoId, input: UpdateTodoInput): Promise<TodoItem>;

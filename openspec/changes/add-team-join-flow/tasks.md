@@ -13,9 +13,9 @@
 
 ## 3. Workspace membership synchronization and join UX
 
-- [ ] 3.1 Extend membership queries or sync primitives to include teams joined through invite redemption
-- [ ] 3.2 Refresh or invalidate workspace navigation data after a successful join so the new team appears immediately
-- [ ] 3.3 Add UI for an existing team member to generate and share a team invite
+- [x] 3.1 Extend membership queries or sync primitives to include teams joined through invite redemption
+- [x] 3.2 Refresh or invalidate workspace navigation data after a successful join so the new team appears immediately
+- [x] 3.3 Add UI for an existing team member to generate and share a team invite
 - [ ] 3.4 Add UI for an authenticated user to open an invite link or submit an invite code and join the team
 - [ ] 3.5 Show clear success and failure states for invite acceptance without interrupting the existing personal workspace flow
 

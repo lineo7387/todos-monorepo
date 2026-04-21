@@ -1,4 +1,6 @@
 import type {
+  CreateTeamInviteInput,
+  TeamInvite,
   CreateTeamInput,
   CreateTodoInput,
   TodoId,
@@ -14,7 +16,14 @@ import {
   validateTodoTitle,
 } from "../../utils/src/index.ts";
 
-import type { TeamRecordRow, TodoDatabase, TodoRecordRow, TodoSupabaseClient } from "./types.ts";
+import type {
+  TeamMemberWorkspaceRow,
+  TeamInviteRecordRow,
+  TeamRecordRow,
+  TodoDatabase,
+  TodoRecordRow,
+  TodoSupabaseClient,
+} from "./types.ts";
 
 function mapTodoRecord(record: TodoRecordRow): TodoItem {
   if (record.owner_user_id) {
@@ -55,6 +64,29 @@ function mapTeamWorkspace(record: TeamRecordRow): TodoWorkspace {
     name: record.name,
     teamId: record.id,
   };
+}
+
+export function mapTeamInvite(record: TeamInviteRecordRow): TeamInvite {
+  return {
+    id: record.id,
+    teamId: record.team_id,
+    createdBy: record.created_by,
+    token: record.token,
+    expiresAt: record.expires_at,
+    revokedAt: record.revoked_at,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
+
+function mapJoinedTeamWorkspace(record: TeamMemberWorkspaceRow): TodoWorkspace {
+  const team = Array.isArray(record.team) ? record.team[0] : record.team;
+
+  if (!team) {
+    throw new Error(`Team membership for "${record.team_id}" is missing team details.`);
+  }
+
+  return mapTeamWorkspace(team);
 }
 
 function buildCreatePayload(workspace: TodoWorkspaceScope, input: CreateTodoInput) {
@@ -123,18 +155,21 @@ export class SupabaseTodoRepository implements TodoRepository {
 
   async listWorkspaces(userId: string): Promise<TodoWorkspace[]> {
     const { data, error } = await this.client
-      .from("teams")
-      .select("id, name, created_by, created_at, updated_at")
-      .order("name", { ascending: true });
+      .from("team_members")
+      .select(
+        "team_id, user_id, created_at, team:teams!team_members_team_id_fkey (id, name, created_by, created_at, updated_at)",
+      )
+      .eq("user_id", userId);
 
     if (error) {
       throw error;
     }
 
-    return [
-      createPersonalWorkspace(userId),
-      ...((data ?? []) as TeamRecordRow[]).map(mapTeamWorkspace),
-    ];
+    const teams = ((data ?? []) as TeamMemberWorkspaceRow[])
+      .map(mapJoinedTeamWorkspace)
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    return [createPersonalWorkspace(userId), ...teams];
   }
 
   async createTeam(userId: string, input: CreateTeamInput): Promise<TodoWorkspace> {
@@ -149,6 +184,19 @@ export class SupabaseTodoRepository implements TodoRepository {
     }
 
     return mapTeamWorkspace(data as TeamRecordRow);
+  }
+
+  async createTeamInvite(teamId: string, input?: CreateTeamInviteInput): Promise<TeamInvite> {
+    const { data, error } = await this.client.rpc("create_team_invite", {
+      target_team_id: teamId,
+      target_expires_at: input?.expiresAt ?? null,
+    } as never);
+
+    if (error) {
+      throw error;
+    }
+
+    return mapTeamInvite(data as TeamInviteRecordRow);
   }
 
   async listTodos(workspace: TodoWorkspaceScope): Promise<TodoItem[]> {

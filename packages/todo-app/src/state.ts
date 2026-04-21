@@ -1,8 +1,10 @@
 import type {
   AuthRepository,
   AuthSession,
+  CreateTeamInviteInput,
   CreateTeamInput,
   CreateTodoInput,
+  TeamInvite,
   PasswordSignInInput,
   TodoId,
   TodoItem,
@@ -24,6 +26,7 @@ export type TodoMutationKind =
   | "sign-up"
   | "refresh"
   | "create-team"
+  | "create-team-invite"
   | "create"
   | "update"
   | "delete"
@@ -59,6 +62,8 @@ export interface TodoAppController {
   signInWithPassword(input: PasswordSignInInput): Promise<AuthSession>;
   signUpWithPassword(input: PasswordSignInInput): Promise<AuthSession | null>;
   createTeam(input: CreateTeamInput): Promise<TodoWorkspace>;
+  createTeamInvite(teamId: string, input?: CreateTeamInviteInput): Promise<TeamInvite>;
+  syncWorkspaces(preferredWorkspaceId?: string | null): Promise<TodoWorkspace[]>;
   selectWorkspace(workspaceId: string): Promise<TodoItem[]>;
   refresh(): Promise<TodoItem[]>;
   createTodo(input: CreateTodoInput): Promise<TodoItem>;
@@ -146,6 +151,8 @@ function getPendingMessage(state: TodoAppState): string | null {
       return "Saving your new task...";
     case "create-team":
       return "Creating your team workspace...";
+    case "create-team-invite":
+      return "Creating your invite...";
     case "delete":
       return "Deleting task...";
     case "sign-up":
@@ -588,6 +595,65 @@ class TodoAppControllerImpl implements TodoAppController {
     }
   }
 
+  async syncWorkspaces(preferredWorkspaceId?: string | null): Promise<TodoWorkspace[]> {
+    const session = ensureAuthenticatedSession(this.state.session);
+    const currentActiveWorkspaceId = this.state.activeWorkspaceId;
+
+    this.setState({
+      status: "loading",
+      lastError: null,
+      lastErrorKind: null,
+      signInFieldErrors: {
+        email: null,
+        password: null,
+      },
+      todoTitleError: null,
+      lastMutation: "refresh",
+    });
+
+    try {
+      const workspaces = await this.dependencies.todoRepository.listWorkspaces(session.userId);
+      const nextActiveWorkspace = this.resolveActiveWorkspace(
+        workspaces,
+        preferredWorkspaceId ?? currentActiveWorkspaceId,
+      );
+      const todos = nextActiveWorkspace
+        ? await this.dependencies.todoRepository.listTodos(getWorkspaceScope(nextActiveWorkspace))
+        : [];
+
+      this.setState({
+        status: "ready",
+        workspaces,
+        activeWorkspaceId: nextActiveWorkspace?.id ?? null,
+        todos,
+        lastError: null,
+        lastErrorKind: null,
+        signInFieldErrors: {
+          email: null,
+          password: null,
+        },
+        todoTitleError: null,
+        lastMutation: "refresh",
+      });
+
+      return workspaces;
+    } catch (error) {
+      this.setState({
+        status: "error",
+        lastError: toErrorMessage(error),
+        lastErrorKind: "sync",
+        signInFieldErrors: {
+          email: null,
+          password: null,
+        },
+        todoTitleError: null,
+        lastMutation: "refresh",
+      });
+
+      throw error;
+    }
+  }
+
   async createTeam(input: CreateTeamInput): Promise<TodoWorkspace> {
     const teamName = validateTeamName(input.name);
 
@@ -654,6 +720,46 @@ class TodoAppControllerImpl implements TodoAppController {
       return activeWorkspace ?? createdWorkspace;
     } catch (error) {
       await this.handleMutationFailure(snapshot, "create-team", error);
+      throw error;
+    }
+  }
+
+  async createTeamInvite(teamId: string, input?: CreateTeamInviteInput): Promise<TeamInvite> {
+    ensureAuthenticatedSession(this.state.session);
+    const snapshot = this.state;
+
+    this.setState({
+      pendingMutations: snapshot.pendingMutations + 1,
+      lastError: null,
+      lastErrorKind: null,
+      signInFieldErrors: {
+        email: null,
+        password: null,
+      },
+      todoTitleError: null,
+      lastMutation: "create-team-invite",
+      status: "ready",
+    });
+
+    try {
+      const invite = await this.dependencies.todoRepository.createTeamInvite(teamId, input);
+
+      this.setState({
+        pendingMutations: Math.max(this.state.pendingMutations - 1, 0),
+        lastError: null,
+        lastErrorKind: null,
+        signInFieldErrors: {
+          email: null,
+          password: null,
+        },
+        todoTitleError: null,
+        lastMutation: "create-team-invite",
+        status: "ready",
+      });
+
+      return invite;
+    } catch (error) {
+      await this.handleMutationFailure(snapshot, "create-team-invite", error);
       throw error;
     }
   }

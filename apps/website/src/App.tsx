@@ -129,6 +129,10 @@ export function App() {
   const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [teamInviteCode, setTeamInviteCode] = useState("");
+  const [teamInviteLink, setTeamInviteLink] = useState<string | null>(null);
+  const [teamInviteExpiresAt, setTeamInviteExpiresAt] = useState<string | null>(null);
+  const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!bootstrap.controller) {
@@ -154,6 +158,13 @@ export function App() {
       window.removeEventListener("popstate", handlePopState);
     };
   }, []);
+
+  useEffect(() => {
+    setTeamInviteCode("");
+    setTeamInviteLink(null);
+    setTeamInviteExpiresAt(null);
+    setTeamInviteMessage(null);
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
 
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
@@ -304,6 +315,34 @@ export function App() {
     setEditingTitle("");
   }
 
+  async function copyToClipboard(value: string, successMessage: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setTeamInviteMessage(successMessage);
+    } catch {
+      setTeamInviteMessage("Copy failed. You can still select the value and copy it manually.");
+    }
+  }
+
+  async function handleCreateTeamInvite() {
+    if (!controller || !routedTeamWorkspace?.teamId) {
+      return;
+    }
+
+    await controller
+      .createTeamInvite(routedTeamWorkspace.teamId)
+      .then((invite) => {
+        const joinUrl = new URL(getWebsiteRouteHref({ name: "join-team" }), window.location.origin);
+
+        joinUrl.searchParams.set("invite", invite.token);
+        setTeamInviteCode(invite.token);
+        setTeamInviteLink(joinUrl.toString());
+        setTeamInviteExpiresAt(invite.expiresAt);
+        setTeamInviteMessage("Invite ready to share.");
+      })
+      .catch(() => {});
+  }
+
   function renderSignedInPage() {
     if (!controller) {
       return null;
@@ -338,6 +377,9 @@ export function App() {
             emptyStateCopy={getEmptyStateCopy(personalWorkspace)}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
+            onCreateTeamInvite={() => {}}
+            onCopyTeamInviteCode={() => {}}
+            onCopyTeamInviteLink={() => {}}
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
             onDraftTitleChange={setDraftTitle}
             onEditTitleChange={setEditingTitle}
@@ -351,6 +393,10 @@ export function App() {
                   : controller.completeTodo(todo.id)
               ).catch(() => {})
             }
+            teamInviteCode=""
+            teamInviteExpiresAt={null}
+            teamInviteLink={null}
+            teamInviteMessage={null}
             todoTitleError={viewModel.todoTitleError}
             todos={viewModel.todos}
             workspace={personalWorkspace}
@@ -368,6 +414,17 @@ export function App() {
             emptyStateCopy={getEmptyStateCopy(routedTeamWorkspace)}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
+            onCreateTeamInvite={() => void handleCreateTeamInvite()}
+            onCopyTeamInviteCode={() =>
+              void (teamInviteCode
+                ? copyToClipboard(teamInviteCode, "Invite code copied.")
+                : Promise.resolve())
+            }
+            onCopyTeamInviteLink={() =>
+              void (teamInviteLink
+                ? copyToClipboard(teamInviteLink, "Invite link copied.")
+                : Promise.resolve())
+            }
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
             onDraftTitleChange={setDraftTitle}
             onEditTitleChange={setEditingTitle}
@@ -381,6 +438,10 @@ export function App() {
                   : controller.completeTodo(todo.id)
               ).catch(() => {})
             }
+            teamInviteCode={teamInviteCode}
+            teamInviteExpiresAt={teamInviteExpiresAt}
+            teamInviteLink={teamInviteLink}
+            teamInviteMessage={teamInviteMessage}
             todoTitleError={viewModel.todoTitleError}
             todos={viewModel.todos}
             workspace={routedTeamWorkspace}

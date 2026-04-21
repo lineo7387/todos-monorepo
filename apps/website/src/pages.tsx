@@ -39,13 +39,20 @@ export interface WorkspacePageProps {
   todos: WebsiteTodoItem[];
   todoTitleError: string | null;
   workspace: WebsiteWorkspace | null;
+  teamInviteCode: string;
+  teamInviteExpiresAt: string | null;
+  teamInviteLink: string | null;
+  teamInviteMessage: string | null;
   onCreateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDraftTitleChange: (value: string) => void;
   onEditTitleChange: (value: string) => void;
+  onCreateTeamInvite: () => void;
   onNavigate: (route: WebsiteRoute) => void;
   onSaveEdit: (event: FormEvent<HTMLFormElement>) => void;
   onStartEdit: (todo: WebsiteTodoItem) => void;
   onCancelEditing: () => void;
+  onCopyTeamInviteCode: () => void;
+  onCopyTeamInviteLink: () => void;
   onDeleteTodo: (todoId: string) => void;
   onToggleComplete: (todo: WebsiteTodoItem) => void;
 }
@@ -117,6 +124,16 @@ function formatUpdatedAt(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
@@ -451,13 +468,20 @@ export function WorkspacePage({
   todos,
   todoTitleError,
   workspace,
+  teamInviteCode,
+  teamInviteExpiresAt,
+  teamInviteLink,
+  teamInviteMessage,
   onCreateSubmit,
   onDraftTitleChange,
   onEditTitleChange,
+  onCreateTeamInvite,
   onNavigate,
   onSaveEdit,
   onStartEdit,
   onCancelEditing,
+  onCopyTeamInviteCode,
+  onCopyTeamInviteLink,
   onDeleteTodo,
   onToggleComplete,
 }: WorkspacePageProps) {
@@ -507,6 +531,59 @@ export function WorkspacePage({
           </div>
         ) : null}
       </section>
+
+      {workspace?.kind === "team" ? (
+        <section className="invite-panel">
+          <div className="invite-panel__header">
+            <div>
+              <p className="page-eyebrow">Invite teammates</p>
+              <h3>Generate a reusable invite for {workspace.name}.</h3>
+              <p className="invite-panel__body">
+                This invite uses the current database policy path and defaults to a 7-day expiry.
+              </p>
+            </div>
+            <button disabled={!canManageTodos} onClick={onCreateTeamInvite} type="button">
+              Create invite
+            </button>
+          </div>
+
+          {teamInviteMessage ? (
+            <p className="info-banner info-banner--embed">{teamInviteMessage}</p>
+          ) : null}
+
+          {teamInviteCode ? (
+            <div className="invite-results">
+              <label className="composer__field">
+                <span>Invite code</span>
+                <div className="inline-copy-field">
+                  <input readOnly value={teamInviteCode} />
+                  <button onClick={onCopyTeamInviteCode} type="button">
+                    Copy code
+                  </button>
+                </div>
+              </label>
+
+              {teamInviteLink ? (
+                <label className="composer__field">
+                  <span>Join link</span>
+                  <div className="inline-copy-field">
+                    <input readOnly value={teamInviteLink} />
+                    <button onClick={onCopyTeamInviteLink} type="button">
+                      Copy link
+                    </button>
+                  </div>
+                </label>
+              ) : null}
+
+              {teamInviteExpiresAt ? (
+                <p className="invite-panel__meta">
+                  Invite expires {formatDateTime(teamInviteExpiresAt)}.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <form className="composer" onSubmit={onCreateSubmit}>
         <label className="composer__field">

@@ -45,6 +45,10 @@ export interface TeamMemberRecordRow {
   created_at: string;
 }
 
+export interface TeamMemberWorkspaceRow extends TeamMemberRecordRow {
+  team: TeamRecordRow | TeamRecordRow[] | null;
+}
+
 export interface TeamInviteRecordRow {
   id: string;
   team_id: string;

@@ -3,9 +3,11 @@ import { describe, expect, test } from "vite-plus/test";
 import type {
   AuthRepository,
   AuthSession,
+  CreateTeamInviteInput,
   CreateTeamInput,
   CreateTodoInput,
   PasswordSignInInput,
+  TeamInvite,
   TodoId,
   TodoItem,
   TodoRepository,
@@ -96,6 +98,18 @@ function createTodoRepository(overrides: Partial<TodoRepository> = {}): TodoRepo
         kind: "team",
         name: input.name.trim(),
         teamId: "team-created",
+      };
+    },
+    async createTeamInvite(teamId: string, input?: CreateTeamInviteInput): Promise<TeamInvite> {
+      return {
+        id: `invite:${teamId}`,
+        teamId,
+        createdBy: "user-1",
+        token: "invite-token",
+        expiresAt: input?.expiresAt ?? "2026-04-28T00:00:00.000Z",
+        revokedAt: null,
+        createdAt: "2026-04-21T00:00:00.000Z",
+        updatedAt: "2026-04-21T00:00:00.000Z",
       };
     },
     async listTodos(workspace: TodoWorkspaceScope) {
@@ -439,6 +453,128 @@ describe("createTodoAppController", () => {
       },
     ]);
     expect(controller.getState().todos).toEqual([]);
+  });
+
+  test("creates a team invite for the current team workspace", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    const calls: Array<{ teamId: string; input?: CreateTeamInviteInput }> = [];
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async createTeamInvite(teamId, input) {
+          calls.push({ teamId, input });
+
+          return {
+            id: "invite-1",
+            teamId,
+            createdBy: "user-1",
+            token: "invite-token",
+            expiresAt: "2026-04-28T00:00:00.000Z",
+            revokedAt: null,
+            createdAt: "2026-04-21T00:00:00.000Z",
+            updatedAt: "2026-04-21T00:00:00.000Z",
+          };
+        },
+      }),
+    });
+
+    await controller.initialize();
+    await controller.selectWorkspace("team-1");
+
+    await expect(controller.createTeamInvite("team-1")).resolves.toEqual({
+      id: "invite-1",
+      teamId: "team-1",
+      createdBy: "user-1",
+      token: "invite-token",
+      expiresAt: "2026-04-28T00:00:00.000Z",
+      revokedAt: null,
+      createdAt: "2026-04-21T00:00:00.000Z",
+      updatedAt: "2026-04-21T00:00:00.000Z",
+    });
+
+    expect(calls).toEqual([
+      {
+        teamId: "team-1",
+        input: undefined,
+      },
+    ]);
+    expect(controller.getState().lastMutation).toBe("create-team-invite");
+    expect(controller.getState().pendingMutations).toBe(0);
+  });
+
+  test("syncs workspace navigation data after a membership change and prefers the joined team", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    const listTodoScopes: TodoWorkspaceScope[] = [];
+    let workspaceListCallCount = 0;
+    const joinedWorkspace = {
+      id: "team-joined",
+      kind: "team" as const,
+      name: "Research",
+      teamId: "team-joined",
+    };
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async listWorkspaces(userId) {
+          workspaceListCallCount += 1;
+
+          if (workspaceListCallCount === 1) {
+            return [createPersonalWorkspace(userId), createTeamWorkspace()];
+          }
+
+          return [createPersonalWorkspace(userId), createTeamWorkspace(), joinedWorkspace];
+        },
+        async listTodos(workspace) {
+          listTodoScopes.push(workspace);
+
+          return workspace.kind === "team" && workspace.teamId === "team-joined"
+            ? [createTodo({ id: "joined-team-todo" }, workspace)]
+            : [createTodo({}, workspace)];
+        },
+      }),
+    });
+
+    await controller.initialize();
+    await expect(controller.syncWorkspaces("team-joined")).resolves.toEqual([
+      createPersonalWorkspace("user-1"),
+      createTeamWorkspace(),
+      joinedWorkspace,
+    ]);
+
+    expect(listTodoScopes).toEqual([
+      {
+        kind: "personal",
+        ownerUserId: "user-1",
+      },
+      {
+        kind: "team",
+        teamId: "team-joined",
+      },
+    ]);
+    expect(controller.getState().workspaces).toEqual([
+      createPersonalWorkspace("user-1"),
+      createTeamWorkspace(),
+      joinedWorkspace,
+    ]);
+    expect(controller.getState().activeWorkspaceId).toBe("team-joined");
+    expect(controller.getState().todos).toEqual([
+      createTodo(
+        {
+          id: "joined-team-todo",
+        },
+        {
+          kind: "team",
+          teamId: "team-joined",
+        },
+      ),
+    ]);
+    expect(controller.getState().lastMutation).toBe("refresh");
   });
 
   test("clears session and workspace state after sign out", async () => {

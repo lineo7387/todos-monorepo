@@ -271,6 +271,9 @@ describe("todo repository helpers", () => {
       async createTeam() {
         throw new Error("not used");
       },
+      async createTeamInvite() {
+        throw new Error("not used");
+      },
       async listTodos(workspace: { kind: "personal"; ownerUserId: string }) {
         return [
           {
@@ -315,6 +318,9 @@ describe("todo repository helpers", () => {
       async createTeam() {
         throw new Error("not used");
       },
+      async createTeamInvite() {
+        throw new Error("not used");
+      },
       async listTodos() {
         throw new Error("not used");
       },
@@ -347,25 +353,49 @@ describe("todo repository helpers", () => {
     ]);
   });
 
-  test("createSupabaseTodoRepository lists personal plus team workspaces", async () => {
+  test("createSupabaseTodoRepository lists personal plus joined team workspaces from memberships", async () => {
     const client = {
       from(table: string) {
-        if (table === "teams") {
+        if (table === "team_members") {
           return {
-            select() {
+            select(selection: string) {
+              expect(selection).toContain("team:teams!team_members_team_id_fkey");
+
               return {
-                order: async () => ({
-                  data: [
-                    {
-                      id: "team-1",
-                      name: "Design",
-                      created_by: "user-1",
-                      created_at: "2026-04-19T00:00:00.000Z",
-                      updated_at: "2026-04-19T00:00:00.000Z",
-                    },
-                  ],
-                  error: null,
-                }),
+                eq(column: string, value: string) {
+                  expect(column).toBe("user_id");
+                  expect(value).toBe("user-1");
+
+                  return Promise.resolve({
+                    data: [
+                      {
+                        team_id: "team-2",
+                        user_id: "user-1",
+                        created_at: "2026-04-20T00:00:00.000Z",
+                        team: {
+                          id: "team-2",
+                          name: "Research",
+                          created_by: "user-2",
+                          created_at: "2026-04-20T00:00:00.000Z",
+                          updated_at: "2026-04-20T00:00:00.000Z",
+                        },
+                      },
+                      {
+                        team_id: "team-1",
+                        user_id: "user-1",
+                        created_at: "2026-04-19T00:00:00.000Z",
+                        team: {
+                          id: "team-1",
+                          name: "Design",
+                          created_by: "user-1",
+                          created_at: "2026-04-19T00:00:00.000Z",
+                          updated_at: "2026-04-19T00:00:00.000Z",
+                        },
+                      },
+                    ],
+                    error: null,
+                  });
+                },
               };
             },
           };
@@ -389,6 +419,12 @@ describe("todo repository helpers", () => {
         kind: "team",
         name: "Design",
         teamId: "team-1",
+      },
+      {
+        id: "team-2",
+        kind: "team",
+        name: "Research",
+        teamId: "team-2",
       },
     ]);
   });
@@ -484,6 +520,45 @@ describe("todo repository helpers", () => {
       kind: "team",
       name: "Product Ops",
       teamId: "team-created",
+    });
+  });
+
+  test("createSupabaseTodoRepository creates a team invite through the invite rpc", async () => {
+    const client = {
+      rpc(fn: string, args: { target_team_id: string; target_expires_at: string | null }) {
+        expect(fn).toBe("create_team_invite");
+        expect(args).toEqual({
+          target_team_id: "team-1",
+          target_expires_at: null,
+        });
+
+        return Promise.resolve({
+          data: {
+            id: "invite-1",
+            team_id: "team-1",
+            created_by: "user-1",
+            token: "abc123",
+            expires_at: "2026-04-28T00:00:00.000Z",
+            revoked_at: null,
+            created_at: "2026-04-21T00:00:00.000Z",
+            updated_at: "2026-04-21T00:00:00.000Z",
+          },
+          error: null,
+        });
+      },
+    };
+
+    const repository = createSupabaseTodoRepository(client as never);
+
+    await expect(repository.createTeamInvite("team-1")).resolves.toEqual({
+      id: "invite-1",
+      teamId: "team-1",
+      createdBy: "user-1",
+      token: "abc123",
+      expiresAt: "2026-04-28T00:00:00.000Z",
+      revokedAt: null,
+      createdAt: "2026-04-21T00:00:00.000Z",
+      updatedAt: "2026-04-21T00:00:00.000Z",
     });
   });
 
