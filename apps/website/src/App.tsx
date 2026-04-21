@@ -15,7 +15,9 @@ import {
   JoinTeamPage,
   TeamListPage,
   TopLevelNavigation,
+  type WorkspaceDateView,
   WorkspacePage,
+  type WorkspaceTaskFilter,
   type WebsiteWorkspace,
 } from "./pages.tsx";
 import { getWebsiteRouteHref, parseWebsiteRoute, type WebsiteRoute } from "./routes.ts";
@@ -113,6 +115,45 @@ function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
   };
 }
 
+function getCurrentDateValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getActiveTaskFilterLabel(filter: WorkspaceTaskFilter): string {
+  switch (filter) {
+    case "active":
+      return "Active";
+    case "completed":
+      return "Completed";
+    case "all":
+      return "All";
+  }
+}
+
+function getActiveDateViewLabel(view: WorkspaceDateView): string {
+  switch (view) {
+    case "due-today":
+      return "due today";
+    case "upcoming":
+      return "upcoming";
+    case "all":
+      return "all tasks";
+  }
+}
+
+function formatSelectedDateLabel(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
 export function App() {
   const [joinFeedback, setJoinFeedback] = useState<{
     kind: "error" | "notice";
@@ -132,6 +173,9 @@ export function App() {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDueDate, setDraftDueDate] = useState("");
   const [draftTeamName, setDraftTeamName] = useState("");
+  const [dateView, setDateView] = useState<WorkspaceDateView>("all");
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateValue);
+  const [taskFilter, setTaskFilter] = useState<WorkspaceTaskFilter>("all");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingDueDate, setEditingDueDate] = useState("");
@@ -186,6 +230,14 @@ export function App() {
     setJoinFeedback(null);
   }, [route.name]);
 
+  useEffect(() => {
+    if (route.name === "personal-workspace" || route.name === "team-detail") {
+      setTaskFilter("all");
+      setDateView("all");
+      setSelectedDate(getCurrentDateValue());
+    }
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
@@ -198,6 +250,42 @@ export function App() {
     route.name === "team-detail"
       ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
       : null;
+  const todayDateValue = getCurrentDateValue();
+  const taskCounts = {
+    all: viewModel.todos.length,
+    active: viewModel.todos.filter((todo) => !todo.completed).length,
+    completed: viewModel.todos.filter((todo) => todo.completed).length,
+  } satisfies Record<WorkspaceTaskFilter, number>;
+  const statusFilteredTodos = viewModel.todos.filter((todo) => {
+    if (taskFilter === "active") {
+      return !todo.completed;
+    }
+
+    if (taskFilter === "completed") {
+      return todo.completed;
+    }
+
+    return true;
+  });
+  const dateViewCounts = {
+    all: statusFilteredTodos.length,
+    "due-today": statusFilteredTodos.filter((todo) => todo.dueDate === todayDateValue).length,
+    upcoming: statusFilteredTodos.filter(
+      (todo) => todo.dueDate !== null && todo.dueDate > todayDateValue,
+    ).length,
+  } satisfies Record<WorkspaceDateView, number>;
+  const filteredTodos = statusFilteredTodos.filter((todo) => {
+    if (dateView === "due-today") {
+      return todo.dueDate === todayDateValue;
+    }
+
+    if (dateView === "upcoming") {
+      return todo.dueDate !== null && todo.dueDate > todayDateValue;
+    }
+
+    return true;
+  });
+  const selectedDateTodos = statusFilteredTodos.filter((todo) => todo.dueDate === selectedDate);
 
   function navigate(nextRoute: WebsiteRoute, options?: { replace?: boolean }) {
     const href = getWebsiteRouteHref(nextRoute);
@@ -437,24 +525,36 @@ export function App() {
       case "personal-workspace":
         return (
           <WorkspacePage
+            selectedDate={selectedDate}
+            selectedDateLabel={formatSelectedDateLabel(selectedDate)}
+            selectedDateTaskCount={selectedDateTodos.length}
+            selectedDateTodos={selectedDateTodos}
             canManageTodos={viewModel.canManageTodos}
             draftTitle={draftTitle}
             draftDueDate={draftDueDate}
             editingTodoId={editingTodoId}
             editingTitle={editingTitle}
             editingDueDate={editingDueDate}
+            activeDateViewLabel={getActiveDateViewLabel(dateView)}
+            activeTaskFilterLabel={getActiveTaskFilterLabel(taskFilter)}
+            dateView={dateView}
+            dateViewCounts={dateViewCounts}
             emptyStateCopy={getEmptyStateCopy(personalWorkspace)}
+            hasAnyTodos={viewModel.todos.length > 0}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
             onCreateTeamInvite={() => {}}
             onCopyTeamInviteCode={() => {}}
             onCopyTeamInviteLink={() => {}}
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
+            onDateViewChange={setDateView}
             onDraftTitleChange={setDraftTitle}
             onDraftDueDateChange={setDraftDueDate}
             onEditTitleChange={setEditingTitle}
             onEditDueDateChange={setEditingDueDate}
             onNavigate={navigate}
+            onSelectedDateChange={setSelectedDate}
+            onTaskFilterChange={setTaskFilter}
             onSaveEdit={(event) => void handleSaveEdit(event)}
             onStartEdit={beginEditing}
             onToggleComplete={(todo) =>
@@ -468,8 +568,10 @@ export function App() {
             teamInviteExpiresAt={null}
             teamInviteLink={null}
             teamInviteMessage={null}
+            taskCounts={taskCounts}
+            taskFilter={taskFilter}
             todoTitleError={viewModel.todoTitleError}
-            todos={viewModel.todos}
+            todos={filteredTodos}
             workspace={personalWorkspace}
           />
         );
@@ -478,13 +580,22 @@ export function App() {
       case "team-detail":
         return (
           <WorkspacePage
+            selectedDate={selectedDate}
+            selectedDateLabel={formatSelectedDateLabel(selectedDate)}
+            selectedDateTaskCount={selectedDateTodos.length}
+            selectedDateTodos={selectedDateTodos}
             canManageTodos={viewModel.canManageTodos}
             draftTitle={draftTitle}
             draftDueDate={draftDueDate}
             editingTodoId={editingTodoId}
             editingTitle={editingTitle}
             editingDueDate={editingDueDate}
+            activeDateViewLabel={getActiveDateViewLabel(dateView)}
+            activeTaskFilterLabel={getActiveTaskFilterLabel(taskFilter)}
+            dateView={dateView}
+            dateViewCounts={dateViewCounts}
             emptyStateCopy={getEmptyStateCopy(routedTeamWorkspace)}
+            hasAnyTodos={viewModel.todos.length > 0}
             onCancelEditing={cancelEditing}
             onCreateSubmit={(event) => void handleCreateSubmit(event)}
             onCreateTeamInvite={() => void handleCreateTeamInvite()}
@@ -499,11 +610,14 @@ export function App() {
                 : Promise.resolve())
             }
             onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
+            onDateViewChange={setDateView}
             onDraftTitleChange={setDraftTitle}
             onDraftDueDateChange={setDraftDueDate}
             onEditTitleChange={setEditingTitle}
             onEditDueDateChange={setEditingDueDate}
             onNavigate={navigate}
+            onSelectedDateChange={setSelectedDate}
+            onTaskFilterChange={setTaskFilter}
             onSaveEdit={(event) => void handleSaveEdit(event)}
             onStartEdit={beginEditing}
             onToggleComplete={(todo) =>
@@ -517,8 +631,10 @@ export function App() {
             teamInviteExpiresAt={teamInviteExpiresAt}
             teamInviteLink={teamInviteLink}
             teamInviteMessage={teamInviteMessage}
+            taskCounts={taskCounts}
+            taskFilter={taskFilter}
             todoTitleError={viewModel.todoTitleError}
-            todos={viewModel.todos}
+            todos={filteredTodos}
             workspace={routedTeamWorkspace}
           />
         );

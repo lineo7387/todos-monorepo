@@ -22,9 +22,9 @@
 ## 4. Task filtering and lightweight time model
 
 - [x] 4.1 Extend task storage, shared state, and UI models to support an optional `dueDate`
-- [ ] 4.2 Add workspace task filters for all, active, and completed items in personal and team task views
-- [ ] 4.3 Add initial date-based task views such as due today or upcoming that only include tasks with `dueDate`
-- [ ] 4.4 Add a lightweight calendar day view or selected-date task inspection flow without implementing full scheduling features
+- [x] 4.2 Add workspace task filters for all, active, and completed items in personal and team task views
+- [x] 4.3 Add initial date-based task views such as due today or upcoming that only include tasks with `dueDate`
+- [x] 4.4 Add a lightweight calendar day view or selected-date task inspection flow without implementing full scheduling features
 
 ## 5. Verification
 
