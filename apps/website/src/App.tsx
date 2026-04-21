@@ -94,6 +94,162 @@ function getPageTitle(route: WebsiteRoute, teamName?: string): string {
   }
 }
 
+export interface ResolveWorkspaceRouteEffectInput {
+  activeWorkspaceId: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  personalWorkspaceId: string | null;
+  route: WebsiteRoute;
+  routedTeamWorkspaceId: string | null;
+}
+
+export interface ResolveWorkspaceRouteEffectResult {
+  redirectRoute: WebsiteRoute | null;
+  routeNotice: string | null;
+  selectWorkspaceId: string | null;
+}
+
+export interface DeriveWorkspaceTaskViewInput {
+  dateView: WorkspaceDateView;
+  selectedDate: string;
+  taskFilter: WorkspaceTaskFilter;
+  todayDateValue: string;
+  todos: TodoAppState["todos"];
+}
+
+export interface DeriveWorkspaceTaskViewResult {
+  dateViewCounts: Record<WorkspaceDateView, number>;
+  filteredTodos: TodoAppState["todos"];
+  selectedDateTodos: TodoAppState["todos"];
+  taskCounts: Record<WorkspaceTaskFilter, number>;
+}
+
+export function resolveWorkspaceRouteEffect(
+  input: ResolveWorkspaceRouteEffectInput,
+): ResolveWorkspaceRouteEffectResult {
+  if (!input.isAuthenticated) {
+    return {
+      redirectRoute: null,
+      routeNotice: null,
+      selectWorkspaceId: null,
+    };
+  }
+
+  if (input.route.name === "personal-workspace") {
+    if (input.personalWorkspaceId && input.activeWorkspaceId !== input.personalWorkspaceId) {
+      return {
+        redirectRoute: null,
+        routeNotice: null,
+        selectWorkspaceId: input.personalWorkspaceId,
+      };
+    }
+
+    return {
+      redirectRoute: null,
+      routeNotice: null,
+      selectWorkspaceId: null,
+    };
+  }
+
+  if (input.route.name !== "team-detail") {
+    return {
+      redirectRoute: null,
+      routeNotice: null,
+      selectWorkspaceId: null,
+    };
+  }
+
+  if (!input.routedTeamWorkspaceId) {
+    if (input.isLoading) {
+      return {
+        redirectRoute: null,
+        routeNotice: null,
+        selectWorkspaceId: null,
+      };
+    }
+
+    return {
+      redirectRoute: { name: "team-list" },
+      routeNotice: "That team is not available in your current memberships.",
+      selectWorkspaceId: null,
+    };
+  }
+
+  if (input.activeWorkspaceId !== input.routedTeamWorkspaceId) {
+    return {
+      redirectRoute: null,
+      routeNotice: null,
+      selectWorkspaceId: input.routedTeamWorkspaceId,
+    };
+  }
+
+  return {
+    redirectRoute: null,
+    routeNotice: null,
+    selectWorkspaceId: null,
+  };
+}
+
+export function getJoinTeamSuccessOutcome(workspace: WebsiteWorkspace) {
+  return {
+    route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id } satisfies WebsiteRoute,
+    routeNotice: `You can now work in ${workspace.name}. My workspace stays available from the top navigation.`,
+  };
+}
+
+export function deriveWorkspaceTaskView(
+  input: DeriveWorkspaceTaskViewInput,
+): DeriveWorkspaceTaskViewResult {
+  const taskCounts = {
+    all: input.todos.length,
+    active: input.todos.filter((todo) => !todo.completed).length,
+    completed: input.todos.filter((todo) => todo.completed).length,
+  } satisfies Record<WorkspaceTaskFilter, number>;
+
+  const statusFilteredTodos = input.todos.filter((todo) => {
+    if (input.taskFilter === "active") {
+      return !todo.completed;
+    }
+
+    if (input.taskFilter === "completed") {
+      return todo.completed;
+    }
+
+    return true;
+  });
+
+  const dateViewCounts = {
+    all: statusFilteredTodos.length,
+    "due-today": statusFilteredTodos.filter((todo) => todo.dueDate === input.todayDateValue).length,
+    upcoming: statusFilteredTodos.filter(
+      (todo) => todo.dueDate !== null && todo.dueDate > input.todayDateValue,
+    ).length,
+  } satisfies Record<WorkspaceDateView, number>;
+
+  const filteredTodos = statusFilteredTodos.filter((todo) => {
+    if (input.dateView === "due-today") {
+      return todo.dueDate === input.todayDateValue;
+    }
+
+    if (input.dateView === "upcoming") {
+      return todo.dueDate !== null && todo.dueDate > input.todayDateValue;
+    }
+
+    return true;
+  });
+
+  const selectedDateTodos = statusFilteredTodos.filter(
+    (todo) => todo.dueDate === input.selectedDate,
+  );
+
+  return {
+    dateViewCounts,
+    filteredTodos,
+    selectedDateTodos,
+    taskCounts,
+  };
+}
+
 function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
   if (!workspace) {
     return {
@@ -251,41 +407,13 @@ export function App() {
       ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
       : null;
   const todayDateValue = getCurrentDateValue();
-  const taskCounts = {
-    all: viewModel.todos.length,
-    active: viewModel.todos.filter((todo) => !todo.completed).length,
-    completed: viewModel.todos.filter((todo) => todo.completed).length,
-  } satisfies Record<WorkspaceTaskFilter, number>;
-  const statusFilteredTodos = viewModel.todos.filter((todo) => {
-    if (taskFilter === "active") {
-      return !todo.completed;
-    }
-
-    if (taskFilter === "completed") {
-      return todo.completed;
-    }
-
-    return true;
+  const { taskCounts, dateViewCounts, filteredTodos, selectedDateTodos } = deriveWorkspaceTaskView({
+    dateView,
+    selectedDate,
+    taskFilter,
+    todayDateValue,
+    todos: viewModel.todos,
   });
-  const dateViewCounts = {
-    all: statusFilteredTodos.length,
-    "due-today": statusFilteredTodos.filter((todo) => todo.dueDate === todayDateValue).length,
-    upcoming: statusFilteredTodos.filter(
-      (todo) => todo.dueDate !== null && todo.dueDate > todayDateValue,
-    ).length,
-  } satisfies Record<WorkspaceDateView, number>;
-  const filteredTodos = statusFilteredTodos.filter((todo) => {
-    if (dateView === "due-today") {
-      return todo.dueDate === todayDateValue;
-    }
-
-    if (dateView === "upcoming") {
-      return todo.dueDate !== null && todo.dueDate > todayDateValue;
-    }
-
-    return true;
-  });
-  const selectedDateTodos = statusFilteredTodos.filter((todo) => todo.dueDate === selectedDate);
 
   function navigate(nextRoute: WebsiteRoute, options?: { replace?: boolean }) {
     const href = getWebsiteRouteHref(nextRoute);
@@ -311,33 +439,27 @@ export function App() {
   }
 
   useEffect(() => {
-    if (!controller || !viewModel.isAuthenticated) {
+    if (!controller) {
       return;
     }
 
-    if (route.name === "personal-workspace") {
-      if (personalWorkspace && viewModel.activeWorkspace?.id !== personalWorkspace.id) {
-        void controller.selectWorkspace(personalWorkspace.id).catch(() => {});
-      }
+    const effect = resolveWorkspaceRouteEffect({
+      activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
+      isAuthenticated: viewModel.isAuthenticated,
+      isLoading: viewModel.isLoading,
+      personalWorkspaceId: personalWorkspace?.id ?? null,
+      route,
+      routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
+    });
 
+    if (effect.redirectRoute) {
+      navigate(effect.redirectRoute, { replace: true });
+      setRouteNotice(effect.routeNotice);
       return;
     }
 
-    if (route.name !== "team-detail") {
-      return;
-    }
-
-    if (!routedTeamWorkspace) {
-      if (!viewModel.isLoading) {
-        navigate({ name: "team-list" }, { replace: true });
-        setRouteNotice("That team is not available in your current memberships.");
-      }
-
-      return;
-    }
-
-    if (viewModel.activeWorkspace?.id !== routedTeamWorkspace.id) {
-      void controller.selectWorkspace(routedTeamWorkspace.id).catch(() => {});
+    if (effect.selectWorkspaceId) {
+      void controller.selectWorkspace(effect.selectWorkspaceId).catch(() => {});
     }
   }, [
     controller,
@@ -477,11 +599,10 @@ export function App() {
     await controller
       .redeemTeamInvite(joinInviteCode)
       .then((workspace) => {
+        const outcome = getJoinTeamSuccessOutcome(workspace);
         setJoinInviteCode("");
-        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
-        setRouteNotice(
-          `You can now work in ${workspace.name}. My workspace stays available from the top navigation.`,
-        );
+        navigate(outcome.route);
+        setRouteNotice(outcome.routeNotice);
       })
       .catch((error: unknown) => {
         const latestState = controller.getState();

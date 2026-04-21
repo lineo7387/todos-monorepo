@@ -634,6 +634,28 @@ describe("todo repository helpers", () => {
     });
   });
 
+  test("createSupabaseTodoRepository surfaces invite redemption errors from the redeem rpc", async () => {
+    const client = {
+      rpc(fn: string, args: { target_token: string }) {
+        expect(fn).toBe("redeem_team_invite");
+        expect(args).toEqual({
+          target_token: "missing-token",
+        });
+
+        return Promise.resolve({
+          data: null,
+          error: new Error("Invite is invalid or expired."),
+        });
+      },
+    };
+
+    const repository = createSupabaseTodoRepository(client as never);
+
+    await expect(repository.redeemTeamInvite("missing-token")).rejects.toThrow(
+      "Invite is invalid or expired.",
+    );
+  });
+
   test("createSupabaseTodoRepository maps team todo rows from Supabase", async () => {
     const client = {
       from() {

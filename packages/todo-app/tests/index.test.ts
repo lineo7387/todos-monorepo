@@ -699,6 +699,160 @@ describe("createTodoAppController", () => {
     expect(controller.getState().lastMutation).toBe("redeem-team-invite");
   });
 
+  test("refreshes the team list after joining through an invite", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    let workspaceListCallCount = 0;
+    const joinedWorkspace = {
+      id: "team-joined",
+      kind: "team" as const,
+      name: "Research",
+      teamId: "team-joined",
+    };
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async redeemTeamInvite() {
+          return {
+            teamId: "team-joined",
+            userId: "user-1",
+            createdAt: "2026-04-21T00:00:00.000Z",
+          };
+        },
+        async listWorkspaces(userId) {
+          workspaceListCallCount += 1;
+
+          if (workspaceListCallCount === 1) {
+            return [createPersonalWorkspace(userId), createTeamWorkspace()];
+          }
+
+          return [createPersonalWorkspace(userId), createTeamWorkspace(), joinedWorkspace];
+        },
+        async listTodos(workspace) {
+          return [createTodo({}, workspace)];
+        },
+      }),
+    });
+
+    await controller.initialize();
+    await controller.redeemTeamInvite("joined-team-token");
+
+    expect(controller.getState().workspaces).toEqual([
+      createPersonalWorkspace("user-1"),
+      createTeamWorkspace(),
+      joinedWorkspace,
+    ]);
+    expect(
+      controller.getState().workspaces.filter((workspace) => workspace.kind === "team"),
+    ).toEqual([createTeamWorkspace(), joinedWorkspace]);
+  });
+
+  test("redeems a duplicate team invite without duplicating workspace entries", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    let workspaceListCallCount = 0;
+    const redeemedTokens: string[] = [];
+    const listTodoScopes: TodoWorkspaceScope[] = [];
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async redeemTeamInvite(token) {
+          redeemedTokens.push(token);
+
+          return {
+            teamId: "team-1",
+            userId: "user-1",
+            createdAt: "2026-04-21T00:00:00.000Z",
+          };
+        },
+        async listWorkspaces(userId) {
+          workspaceListCallCount += 1;
+
+          return [createPersonalWorkspace(userId), createTeamWorkspace()];
+        },
+        async listTodos(workspace) {
+          listTodoScopes.push(workspace);
+
+          return workspace.kind === "team"
+            ? [createTodo({ id: "existing-team-todo" }, workspace)]
+            : [createTodo({ id: "personal-todo" }, workspace)];
+        },
+      }),
+    });
+
+    await controller.initialize();
+
+    await expect(controller.redeemTeamInvite(" invite-token ")).resolves.toEqual(
+      createTeamWorkspace(),
+    );
+
+    expect(redeemedTokens).toEqual(["invite-token"]);
+    expect(workspaceListCallCount).toBe(2);
+    expect(listTodoScopes).toEqual([
+      {
+        kind: "personal",
+        ownerUserId: "user-1",
+      },
+      {
+        kind: "team",
+        teamId: "team-1",
+      },
+    ]);
+    expect(controller.getState().workspaces).toEqual([
+      createPersonalWorkspace("user-1"),
+      createTeamWorkspace(),
+    ]);
+    expect(controller.getState().activeWorkspaceId).toBe("team-1");
+    expect(controller.getState().todos).toEqual([
+      createTodo(
+        {
+          id: "existing-team-todo",
+        },
+        {
+          kind: "team",
+          teamId: "team-1",
+        },
+      ),
+    ]);
+    expect(controller.getState().lastMutation).toBe("redeem-team-invite");
+  });
+
+  test("rejects an empty invite code before redeeming a team invite", async () => {
+    const session = {
+      userId: "user-1",
+      accessToken: "access-token",
+    };
+    const redeemedTokens: string[] = [];
+    const controller = createTodoAppController({
+      authRepository: createAuthRepository(session),
+      todoRepository: createTodoRepository({
+        async redeemTeamInvite(token) {
+          redeemedTokens.push(token);
+
+          return {
+            teamId: "team-1",
+            userId: "user-1",
+            createdAt: "2026-04-21T00:00:00.000Z",
+          };
+        },
+      }),
+    });
+
+    await controller.initialize();
+
+    await expect(controller.redeemTeamInvite("   ")).rejects.toThrow("Invite code is required.");
+
+    expect(redeemedTokens).toEqual([]);
+    expect(controller.getState().pendingMutations).toBe(0);
+    expect(controller.getState().lastError).toBe("Invite code is required.");
+    expect(controller.getState().lastErrorKind).toBe("validation");
+    expect(controller.getState().lastMutation).toBe("redeem-team-invite");
+  });
+
   test("clears session and workspace state after sign out", async () => {
     const session = {
       userId: "user-1",

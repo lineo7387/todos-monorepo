@@ -1,8 +1,8 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Users can manage personal todo items
 
-The system SHALL allow an authenticated user to create, view, update, complete, uncomplete, and delete todo items associated with that user's personal workspace, including an optional `dueDate` used for lightweight time-based organization.
+The system SHALL allow an authenticated user to create, view, update, complete, uncomplete, and delete todo items associated with that user's personal workspace, including an optional `dueDate` used for lightweight time-based organization. Supported clients that expose advanced task organization, including web, desktop, and planned mobile parity flows, SHALL let the user set or edit that optional due date through the client UI.
 
 #### Scenario: User creates a todo item
 
@@ -21,7 +21,7 @@ The system SHALL allow an authenticated user to create, view, update, complete, 
 
 ### Requirement: Users can manage team todo items
 
-The system SHALL allow an authenticated team member to create, view, update, complete, uncomplete, and delete todo items associated with a team workspace they belong to, including an optional `dueDate` used for lightweight time-based organization.
+The system SHALL allow an authenticated team member to create, view, update, complete, uncomplete, and delete todo items associated with a team workspace they belong to, including an optional `dueDate` used for lightweight time-based organization. Supported clients that expose advanced task organization, including web, desktop, and planned mobile parity flows, SHALL let the user set or edit that optional due date through the client UI.
 
 #### Scenario: User creates a team todo item
 
@@ -40,7 +40,7 @@ The system SHALL allow an authenticated team member to create, view, update, com
 
 ### Requirement: Task views support status-based filtering
 
-The system SHALL allow users to filter task lists within a workspace by all, active, and completed items.
+The system SHALL allow users to filter task lists within a workspace by all, active, and completed items. Clients that expose lightweight organization controls, including planned mobile parity flows, SHALL apply the selected filter consistently before rendering task counts, date-view counts, and selected-day inspection.
 
 #### Scenario: User filters to active tasks
 
@@ -54,7 +54,7 @@ The system SHALL allow users to filter task lists within a workspace by all, act
 
 ### Requirement: Time-based task views use optional due dates
 
-The system SHALL treat `dueDate` as an optional task field and only include dated tasks in date-based views such as due today, upcoming, overdue, or calendar day inspection.
+The system SHALL treat `dueDate` as an optional task field and only include dated tasks in date-based views such as due today, upcoming, overdue, or calendar day inspection. Clients that expose lightweight date views, including planned mobile parity flows, SHALL exclude undated tasks from those date-based slices while keeping them visible in the standard workspace list.
 
 #### Scenario: User views date-based tasks
 
@@ -65,22 +65,3 @@ The system SHALL treat `dueDate` as an optional task field and only include date
 
 - **WHEN** a task does not have a due date
 - **THEN** the task remains visible in the standard workspace task list but is excluded from date-based task views
-
-### Requirement: Task views reflect persisted state
-
-The system SHALL render task lists from persisted workspace data so that personal and team todo state remains consistent across app restarts and device changes.
-
-#### Scenario: User reopens the application
-
-- **WHEN** an authenticated user opens any supported client after previously creating or modifying todo items
-- **THEN** the system loads and displays the persisted todo items for the currently selected workspace
-
-#### Scenario: Empty state for new user
-
-- **WHEN** an authenticated user has no todo items
-- **THEN** the system shows an empty task list state with an affordance to create the first todo item
-
-#### Scenario: Empty state for team workspace
-
-- **WHEN** an authenticated user opens a team workspace that has no todo items
-- **THEN** the system shows an empty task list state with an affordance to create the first team todo item

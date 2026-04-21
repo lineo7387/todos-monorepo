@@ -28,7 +28,7 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Add automated coverage for invite creation, valid invite redemption, duplicate redemption, and invalid invite rejection
-- [ ] 5.2 Add automated coverage for route-based workspace access, team list refresh after joining, and unauthorized team navigation
-- [ ] 5.3 Add automated coverage for task filtering and `dueDate` behavior, including exclusion of undated tasks from date-based views
-- [ ] 5.4 Run `vp check` and `vp test` after implementation changes land
+- [x] 5.1 Add automated coverage for invite creation, valid invite redemption, duplicate redemption, and invalid invite rejection
+- [x] 5.2 Add automated coverage for route-based workspace access, team list refresh after joining, and unauthorized team navigation
+- [x] 5.3 Add automated coverage for task filtering and `dueDate` behavior, including exclusion of undated tasks from date-based views
+- [x] 5.4 Run `vp check` and `vp test` after implementation changes land

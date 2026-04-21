@@ -12,7 +12,29 @@ import {
   createTodoSupabaseClient,
 } from "todo-data";
 
+import { deriveDesktopDashboard } from "./desktop-dashboard.ts";
 import { getDesktopSupabaseEnv } from "./env.ts";
+import {
+  extractInviteCode,
+  type DesktopJoinFeedback,
+  getCreateInviteSuccessOutcome,
+  getJoinInviteFailureFeedback,
+  getJoinInviteSuccessOutcome,
+} from "./invite-flow.ts";
+import {
+  DesktopCreateTeamPage,
+  DesktopDashboardPage,
+  DesktopJoinTeamPage,
+  DesktopTeamListPage,
+  DesktopWorkspacePage,
+} from "./pages.tsx";
+import { resolveDesktopRouteEffect } from "./route-effects.ts";
+import { getDefaultDesktopRoute, getDesktopRouteTitle, type DesktopRoute } from "./routes.ts";
+import {
+  deriveDesktopTaskView,
+  type DesktopDateView,
+  type DesktopTaskFilter,
+} from "./task-view.ts";
 
 type DesktopTodoItem = TodoAppState["todos"][number];
 type DesktopWorkspace = NonNullable<ReturnType<typeof createTodoAppViewModel>["activeWorkspace"]>;
@@ -38,6 +60,8 @@ interface DesktopBootstrap {
   controller: TodoAppController | null;
   envError: string | null;
 }
+
+type JoinFeedback = DesktopJoinFeedback;
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.length > 0) {
@@ -82,6 +106,31 @@ function formatUpdatedAt(value: string): string {
   }).format(new Date(value));
 }
 
+function formatDueDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatSelectedDateLabel(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatInviteExpiry(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 function getWorkspaceBadgeLabel(workspace: DesktopWorkspace): string {
   return workspace.kind === "team" ? "Team workspace" : "Personal workspace";
 }
@@ -98,6 +147,49 @@ function getComposerPlaceholder(workspace: DesktopWorkspace | null): string {
   }
 
   return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+}
+
+function getDesktopTaskFilterLabel(filter: DesktopTaskFilter): string {
+  switch (filter) {
+    case "active":
+      return "Active";
+    case "completed":
+      return "Completed";
+    default:
+      return "All";
+  }
+}
+
+function getDesktopDateViewLabel(view: DesktopDateView): string {
+  switch (view) {
+    case "due-today":
+      return "Due today";
+    case "upcoming":
+      return "Upcoming";
+    default:
+      return "All tasks";
+  }
+}
+
+function getCurrentDateValue(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+function getDesktopPageEyebrow(route: DesktopRoute): string {
+  switch (route.name) {
+    case "dashboard":
+      return "Dashboard";
+    case "personal-workspace":
+      return "My workspace";
+    case "team-list":
+      return "Joined teams";
+    case "team-detail":
+      return "Team detail";
+    case "join-team":
+      return "Join team";
+    case "create-team":
+      return "Create team";
+  }
 }
 
 function getEmptyStateCopy(workspace: DesktopWorkspace | null) {
@@ -152,6 +244,7 @@ function TodoRow({
         <div className="todo-card__meta">
           <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
           <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
+          {todo.dueDate ? <span>Due {formatDueDate(todo.dueDate)}</span> : null}
         </div>
         <p>{todo.title}</p>
       </div>
@@ -182,9 +275,21 @@ export function App() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [draftTitle, setDraftTitle] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState("");
   const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingDueDate, setEditingDueDate] = useState("");
+  const [taskFilter, setTaskFilter] = useState<DesktopTaskFilter>("all");
+  const [dateView, setDateView] = useState<DesktopDateView>("all");
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateValue);
+  const [teamInviteCode, setTeamInviteCode] = useState("");
+  const [teamInviteExpiresAt, setTeamInviteExpiresAt] = useState("");
+  const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
+  const [joinInviteInput, setJoinInviteInput] = useState("");
+  const [joinFeedback, setJoinFeedback] = useState<JoinFeedback | null>(null);
+  const [route, setRoute] = useState<DesktopRoute>(getDefaultDesktopRoute);
+  const [routeNotice, setRouteNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!bootstrap.controller) {
@@ -202,7 +307,102 @@ export function App() {
   const controller = bootstrap.controller;
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const activeWorkspace = viewModel.activeWorkspace;
-  const emptyStateCopy = getEmptyStateCopy(activeWorkspace);
+  const personalWorkspace =
+    viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
+  const teamWorkspaces = viewModel.workspaces.filter(
+    (workspace): workspace is DesktopWorkspace => workspace.kind === "team",
+  );
+  const routedTeamWorkspace =
+    route.name === "team-detail"
+      ? (teamWorkspaces.find((workspace) => (workspace.teamId ?? workspace.id) === route.teamId) ??
+        null)
+      : null;
+  const pageWorkspace =
+    route.name === "personal-workspace"
+      ? personalWorkspace
+      : route.name === "team-detail"
+        ? routedTeamWorkspace
+        : activeWorkspace;
+  const emptyStateCopy = getEmptyStateCopy(pageWorkspace);
+  const todayDateValue = getCurrentDateValue();
+  const { filteredTodos, taskCounts, dateViewCounts, selectedDateTodos } = deriveDesktopTaskView(
+    viewModel.todos,
+    taskFilter,
+    dateView,
+    todayDateValue,
+    selectedDate,
+  );
+  const dashboard = deriveDesktopDashboard({
+    activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
+    personalWorkspace,
+    teamWorkspaces,
+  });
+
+  useEffect(() => {
+    setTeamInviteCode("");
+    setTeamInviteExpiresAt("");
+    setTeamInviteMessage(null);
+  }, [route.name, route.name === "team-detail" ? route.teamId : activeWorkspace?.id]);
+
+  useEffect(() => {
+    setJoinFeedback(null);
+  }, [route.name, route.name === "team-detail" ? route.teamId : activeWorkspace?.id]);
+
+  useEffect(() => {
+    if (route.name === "personal-workspace" || route.name === "team-detail") {
+      setTaskFilter("all");
+    }
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
+  useEffect(() => {
+    if (route.name === "personal-workspace" || route.name === "team-detail") {
+      setDateView("all");
+    }
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
+  useEffect(() => {
+    if (route.name === "personal-workspace" || route.name === "team-detail") {
+      setSelectedDate(getCurrentDateValue());
+    }
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
+  useEffect(() => {
+    if (!controller) {
+      return;
+    }
+
+    const effect = resolveDesktopRouteEffect({
+      activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
+      isAuthenticated: viewModel.isAuthenticated,
+      isLoading: viewModel.isLoading,
+      personalWorkspaceId: personalWorkspace?.id ?? null,
+      route,
+      routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
+    });
+
+    if (effect.redirectRoute) {
+      setRoute(effect.redirectRoute);
+      setRouteNotice(effect.routeNotice);
+      return;
+    }
+
+    if (effect.selectWorkspaceId) {
+      void controller.selectWorkspace(effect.selectWorkspaceId).catch(() => {});
+    }
+  }, [
+    controller,
+    personalWorkspace?.id,
+    route,
+    routedTeamWorkspace?.id,
+    viewModel.activeWorkspace?.id,
+    viewModel.isAuthenticated,
+    viewModel.isLoading,
+  ]);
+
+  function navigate(nextRoute: DesktopRoute) {
+    setRoute(nextRoute);
+    setRouteNotice(null);
+  }
 
   async function handleSignInSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -236,9 +436,11 @@ export function App() {
     await controller
       .createTodo({
         title: draftTitle,
+        dueDate: draftDueDate,
       })
       .then(() => {
         setDraftTitle("");
+        setDraftDueDate("");
       })
       .catch(() => {});
   }
@@ -254,8 +456,9 @@ export function App() {
       .createTeam({
         name: draftTeamName,
       })
-      .then(() => {
+      .then((workspace) => {
         setDraftTeamName("");
+        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
       })
       .catch(() => {});
   }
@@ -270,10 +473,12 @@ export function App() {
     await controller
       .updateTodo(editingTodoId, {
         title: editingTitle,
+        dueDate: editingDueDate,
       })
       .then(() => {
         setEditingTodoId(null);
         setEditingTitle("");
+        setEditingDueDate("");
       })
       .catch(() => {});
   }
@@ -281,11 +486,428 @@ export function App() {
   function beginEditing(todo: DesktopTodoItem) {
     setEditingTodoId(todo.id);
     setEditingTitle(todo.title);
+    setEditingDueDate(todo.dueDate ?? "");
   }
 
   function cancelEditing() {
     setEditingTodoId(null);
     setEditingTitle("");
+    setEditingDueDate("");
+  }
+
+  async function handleCreateTeamInvite() {
+    if (!controller || !routedTeamWorkspace?.teamId) {
+      return;
+    }
+
+    setTeamInviteMessage(null);
+
+    await controller
+      .createTeamInvite(routedTeamWorkspace.teamId)
+      .then((invite) => {
+        const outcome = getCreateInviteSuccessOutcome(invite);
+
+        setTeamInviteCode(outcome.code);
+        setTeamInviteExpiresAt(outcome.expiresAt);
+        setTeamInviteMessage(outcome.message);
+      })
+      .catch(() => {});
+  }
+
+  async function handleJoinTeamSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!controller) {
+      return;
+    }
+
+    setJoinFeedback(null);
+
+    await controller
+      .redeemTeamInvite(extractInviteCode(joinInviteInput))
+      .then(async (workspace) => {
+        const outcome = getJoinInviteSuccessOutcome({
+          activeWorkspaceId: controller.getState().activeWorkspaceId,
+          workspace,
+        });
+
+        if (outcome.selectWorkspaceId) {
+          await controller.selectWorkspace(outcome.selectWorkspaceId).catch(() => {});
+        }
+
+        setJoinInviteInput("");
+        setJoinFeedback(outcome.feedback);
+        navigate(outcome.route);
+        setRouteNotice(outcome.routeNotice);
+      })
+      .catch((error: unknown) => {
+        const latestState = controller.getState();
+        setJoinFeedback(
+          getJoinInviteFailureFeedback({
+            error,
+            lastError: latestState.lastError,
+            lastErrorKind: latestState.lastErrorKind,
+          }),
+        );
+      });
+  }
+
+  function renderTodoList() {
+    if (viewModel.showEmptyState) {
+      return null;
+    }
+
+    if (filteredTodos.length === 0) {
+      return null;
+    }
+
+    return (
+      <ul className="todo-list">
+        {filteredTodos.map((todo) => (
+          <TodoRow
+            disabled={!viewModel.canManageTodos}
+            key={todo.id}
+            onDelete={(todoId) => void controller!.deleteTodo(todoId).catch(() => {})}
+            onStartEdit={beginEditing}
+            onToggleComplete={(entry) =>
+              void (
+                entry.completed
+                  ? controller!.uncompleteTodo(entry.id)
+                  : controller!.completeTodo(entry.id)
+              ).catch(() => {})
+            }
+            todo={todo}
+          />
+        ))}
+      </ul>
+    );
+  }
+
+  function renderSelectedDatePanel() {
+    return (
+      <section className="empty-state">
+        <p className="empty-state__eyebrow">Selected day inspection</p>
+        <h3>
+          {selectedDateTodos.length > 0
+            ? `${selectedDateTodos.length} tasks due on ${formatSelectedDateLabel(selectedDate)}`
+            : `No tasks due on ${formatSelectedDateLabel(selectedDate)}`}
+        </h3>
+        <p>
+          {selectedDateTodos.length > 0
+            ? "These tasks stay limited to items whose due date matches the selected day."
+            : "Choose another day or switch filters to inspect a different dated slice."}
+        </p>
+        {selectedDateTodos.length > 0 ? (
+          <ul className="todo-list todo-list--compact">
+            {selectedDateTodos.map((todo) => (
+              <TodoRow
+                disabled={!viewModel.canManageTodos}
+                key={`selected-${todo.id}`}
+                onDelete={(todoId) => void controller!.deleteTodo(todoId).catch(() => {})}
+                onStartEdit={beginEditing}
+                onToggleComplete={(entry) =>
+                  void (
+                    entry.completed
+                      ? controller!.uncompleteTodo(entry.id)
+                      : controller!.completeTodo(entry.id)
+                  ).catch(() => {})
+                }
+                todo={todo}
+              />
+            ))}
+          </ul>
+        ) : null}
+      </section>
+    );
+  }
+
+  function renderTaskControls() {
+    return (
+      <section className="task-filter-bar">
+        <div className="task-filter-bar__copy">
+          <p className="workspace-switcher__eyebrow">Task filter</p>
+          <h3>{getDesktopTaskFilterLabel(taskFilter)} tasks</h3>
+          <p>
+            Narrow this workspace to all, active, or completed tasks without changing the shared
+            product state.
+          </p>
+        </div>
+
+        <div className="task-filter-bar__controls">
+          {(["all", "active", "completed"] as const).map((filter) => (
+            <button
+              className={taskFilter === filter ? "is-active" : ""}
+              disabled={!viewModel.canManageTodos && viewModel.todos.length === 0}
+              key={filter}
+              onClick={() => setTaskFilter(filter)}
+              type="button"
+            >
+              {getDesktopTaskFilterLabel(filter)} ({taskCounts[filter]})
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderDateControls() {
+    return (
+      <>
+        <section className="task-filter-bar">
+          <div className="task-filter-bar__copy">
+            <p className="workspace-switcher__eyebrow">Date view</p>
+            <h3>{getDesktopDateViewLabel(dateView)}</h3>
+            <p>
+              Switch between the full workspace list, tasks due today, and upcoming dated tasks.
+              Undated tasks stay in the standard list only.
+            </p>
+          </div>
+
+          <div className="task-filter-bar__controls">
+            {(["all", "due-today", "upcoming"] as const).map((view) => (
+              <button
+                className={dateView === view ? "is-active" : ""}
+                disabled={!viewModel.canManageTodos && viewModel.todos.length === 0}
+                key={view}
+                onClick={() => setDateView(view)}
+                type="button"
+              >
+                {getDesktopDateViewLabel(view)} ({dateViewCounts[view]})
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="task-filter-bar">
+          <div className="task-filter-bar__copy">
+            <p className="workspace-switcher__eyebrow">Selected day</p>
+            <h3>{formatSelectedDateLabel(selectedDate)}</h3>
+            <p>Inspect the tasks due on one day without switching to a full calendar surface.</p>
+          </div>
+
+          <div className="task-filter-bar__controls task-filter-bar__controls--single">
+            <label className="composer__field">
+              <span>Day to inspect</span>
+              <input
+                onChange={(event) => setSelectedDate(event.currentTarget.value)}
+                type="date"
+                value={selectedDate}
+              />
+            </label>
+            <div className="task-filter-bar__summary">
+              <span>{selectedDateTodos.length} matching tasks</span>
+              <span>
+                This day respects the current {getDesktopTaskFilterLabel(taskFilter).toLowerCase()}{" "}
+                filter.
+              </span>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderEditingForm() {
+    if (!editingTodoId) {
+      return null;
+    }
+
+    return (
+      <form className="editor" onSubmit={(event) => void handleSaveEdit(event)}>
+        <label className="composer__field">
+          <span>Edit task</span>
+          <input
+            disabled={!viewModel.canManageTodos}
+            onChange={(event) => setEditingTitle(event.currentTarget.value)}
+            value={editingTitle}
+          />
+        </label>
+
+        <label className="composer__field">
+          <span>Due date</span>
+          <input
+            disabled={!viewModel.canManageTodos}
+            onChange={(event) => setEditingDueDate(event.currentTarget.value)}
+            type="date"
+            value={editingDueDate}
+          />
+        </label>
+
+        <div className="editor__actions">
+          <button disabled={!viewModel.canManageTodos} type="submit">
+            Save
+          </button>
+          <button disabled={!viewModel.canManageTodos} onClick={cancelEditing} type="button">
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderWorkspaceEmptyState() {
+    if (viewModel.screen === "error") {
+      return (
+        <section className="empty-state empty-state--error">
+          <p className="empty-state__eyebrow">Sync needs attention</p>
+          <h3>We could not load the latest todos.</h3>
+          <p>Try refreshing after checking your network or Supabase configuration.</p>
+        </section>
+      );
+    }
+
+    if (viewModel.showEmptyState) {
+      return (
+        <section className="empty-state">
+          <p className="empty-state__eyebrow">
+            {pageWorkspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
+          </p>
+          <h3>{emptyStateCopy.title}</h3>
+          <p>{emptyStateCopy.body}</p>
+        </section>
+      );
+    }
+
+    if (filteredTodos.length === 0) {
+      return (
+        <section className="empty-state">
+          <p className="empty-state__eyebrow">No matching tasks</p>
+          <h3>
+            No {getDesktopDateViewLabel(dateView).toLowerCase()} for the{" "}
+            {getDesktopTaskFilterLabel(taskFilter).toLowerCase()} slice.
+          </h3>
+          <p>Try a different filter or date view to see more items from this workspace.</p>
+        </section>
+      );
+    }
+
+    return null;
+  }
+
+  function renderTeamInvitePanel() {
+    if (pageWorkspace?.kind !== "team") {
+      return null;
+    }
+
+    return (
+      <section className="team-invite-panel">
+        <div className="team-invite-panel__copy">
+          <p className="workspace-switcher__eyebrow">Team invite</p>
+          <h3>Invite teammates to {pageWorkspace.name}</h3>
+          <p>
+            Create a reusable invite for this team workspace without leaving desktop. The shared
+            `todo-app` controller still owns invite creation and validation.
+          </p>
+        </div>
+
+        <div className="team-invite-panel__controls">
+          <button disabled={pendingUi} onClick={() => void handleCreateTeamInvite()} type="button">
+            Create invite
+          </button>
+
+          {teamInviteMessage ? (
+            <p className="team-invite-panel__message">{teamInviteMessage}</p>
+          ) : null}
+
+          {teamInviteCode ? (
+            <div className="team-invite-panel__result">
+              <div className="team-invite-panel__field">
+                <span>Invite code</span>
+                <code>{teamInviteCode}</code>
+              </div>
+              <div className="team-invite-panel__field">
+                <span>How to share</span>
+                <p>Ask teammates to paste this into the join flow in desktop or dashboard.</p>
+              </div>
+              <div className="team-invite-panel__field">
+                <span>Expires</span>
+                <p>{formatInviteExpiry(teamInviteExpiresAt)}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  function renderSignedInPage() {
+    switch (route.name) {
+      case "dashboard":
+        return (
+          <DesktopDashboardPage
+            actions={dashboard.actions}
+            onNavigate={navigate}
+            stats={dashboard.stats}
+            teamEmptyState={dashboard.teamEmptyState}
+            teamEntries={dashboard.teamEntries}
+          />
+        );
+      case "team-list":
+        return (
+          <DesktopTeamListPage
+            onNavigate={navigate}
+            teams={teamWorkspaces.map((workspace) => ({
+              id: workspace.id,
+              name: workspace.name,
+              route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id },
+            }))}
+          />
+        );
+      case "join-team":
+        return (
+          <DesktopJoinTeamPage
+            feedback={joinFeedback}
+            inputValue={joinInviteInput}
+            isSubmitting={pendingUi}
+            onInputChange={setJoinInviteInput}
+            onNavigate={navigate}
+            onSubmit={(event) => void handleJoinTeamSubmit(event)}
+          />
+        );
+      case "create-team":
+        return (
+          <DesktopCreateTeamPage
+            canManageTodos={viewModel.canManageTodos}
+            draftTeamName={draftTeamName}
+            onDraftTeamNameChange={setDraftTeamName}
+            onNavigate={navigate}
+            onSubmit={(event) => void handleCreateTeamSubmit(event)}
+          />
+        );
+      case "personal-workspace":
+      case "team-detail":
+        return (
+          <DesktopWorkspacePage
+            activeDateViewLabel={getDesktopDateViewLabel(dateView)}
+            activeTaskFilterLabel={getDesktopTaskFilterLabel(taskFilter)}
+            canManageTodos={viewModel.canManageTodos}
+            composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
+            dateControls={renderDateControls()}
+            draftDueDate={draftDueDate}
+            draftTitle={draftTitle}
+            editingForm={renderEditingForm()}
+            emptyState={renderWorkspaceEmptyState()}
+            emptyStateCopy={emptyStateCopy}
+            filteredTodoList={renderTodoList()}
+            introBody={
+              pageWorkspace
+                ? getWorkspaceDescription(pageWorkspace)
+                : "No personal or team workspace is available for this account yet."
+            }
+            introEyebrow={getDesktopPageEyebrow(route)}
+            introTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
+            invitePanel={renderTeamInvitePanel()}
+            onCreateSubmit={(event) => void handleCreateSubmit(event)}
+            onDraftDueDateChange={setDraftDueDate}
+            onDraftTitleChange={setDraftTitle}
+            onNavigate={navigate}
+            selectedDatePanel={renderSelectedDatePanel()}
+            taskControls={renderTaskControls()}
+            todoTitleError={viewModel.todoTitleError}
+            workspace={pageWorkspace}
+          />
+        );
+    }
   }
 
   if (bootstrap.envError) {
@@ -480,151 +1102,151 @@ export function App() {
           <>
             <section className="workspace-switcher">
               <div className="workspace-switcher__copy">
-                <p className="workspace-switcher__eyebrow">Workspace</p>
-                <h3>{activeWorkspace?.name ?? "No workspace available"}</h3>
+                <p className="workspace-switcher__eyebrow">Workspace navigation</p>
+                <h3>{getDesktopRouteTitle(route, routedTeamWorkspace?.name)}</h3>
                 <p>
-                  {activeWorkspace
-                    ? getWorkspaceDescription(activeWorkspace)
-                    : "No personal or team workspace is available for this account yet."}
+                  Desktop now uses page-level destinations so dashboard, my workspace, joined teams,
+                  and team actions no longer have to share one combined signed-in screen.
                 </p>
               </div>
 
               <div className="workspace-switcher__controls">
-                <label className="workspace-switcher__field">
-                  <span>Active workspace</span>
-                  <select
-                    disabled={pendingUi || viewModel.workspaces.length === 0}
-                    onChange={(event) =>
-                      void controller.selectWorkspace(event.currentTarget.value).catch(() => {})
-                    }
-                    value={viewModel.activeWorkspace?.id ?? ""}
-                  >
-                    {viewModel.workspaces.map((workspace) => (
-                      <option key={workspace.id} value={workspace.id}>
-                        {workspace.kind === "team" ? `Team: ${workspace.name}` : workspace.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="task-filter-bar__controls">
+                  {(
+                    [
+                      { label: "Dashboard", route: { name: "dashboard" } },
+                      { label: "My workspace", route: { name: "personal-workspace" } },
+                      { label: "Teams", route: { name: "team-list" } },
+                      { label: "Join team", route: { name: "join-team" } },
+                      { label: "Create team", route: { name: "create-team" } },
+                    ] as const
+                  ).map((entry) => (
+                    <button
+                      className={route.name === entry.route.name ? "is-active" : ""}
+                      key={entry.label}
+                      onClick={() => navigate(entry.route)}
+                      type="button"
+                    >
+                      {entry.label}
+                    </button>
+                  ))}
+                </div>
 
-                {activeWorkspace ? (
-                  <div className="workspace-switcher__meta">
-                    <span className={`workspace-badge workspace-badge--${activeWorkspace.kind}`}>
-                      {getWorkspaceBadgeLabel(activeWorkspace)}
-                    </span>
-                    <span className="workspace-switcher__hint">
-                      {activeWorkspace.kind === "team"
-                        ? "Create, edit, complete, and delete actions apply to this shared team list."
-                        : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-                    </span>
-                  </div>
-                ) : null}
-
-                <form
-                  className="workspace-switcher__create"
-                  onSubmit={(event) => void handleCreateTeamSubmit(event)}
-                >
-                  <label className="workspace-switcher__field">
-                    <span>New team</span>
-                    <input
-                      disabled={!viewModel.canManageTodos}
-                      onChange={(event) => setDraftTeamName(event.currentTarget.value)}
-                      placeholder="Operations"
-                      value={draftTeamName}
-                    />
-                  </label>
-
-                  <button disabled={!viewModel.canManageTodos} type="submit">
-                    Create team
-                  </button>
-                </form>
+                <div className="workspace-switcher__meta">
+                  {personalWorkspace ? (
+                    <button onClick={() => navigate({ name: "personal-workspace" })} type="button">
+                      My workspace
+                    </button>
+                  ) : null}
+                  {teamWorkspaces.map((workspace) => (
+                    <button
+                      className={
+                        route.name === "team-detail" &&
+                        route.teamId === (workspace.teamId ?? workspace.id)
+                          ? "is-active"
+                          : ""
+                      }
+                      key={workspace.id}
+                      onClick={() =>
+                        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id })
+                      }
+                      type="button"
+                    >
+                      {workspace.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             </section>
 
-            <form className="composer" onSubmit={(event) => void handleCreateSubmit(event)}>
-              <label className="composer__field">
-                <span>New task</span>
-                <input
-                  disabled={!viewModel.canManageTodos}
-                  onChange={(event) => setDraftTitle(event.currentTarget.value)}
-                  placeholder={getComposerPlaceholder(activeWorkspace)}
-                  value={draftTitle}
-                />
-              </label>
+            {routeNotice ? <p className="info-banner">{routeNotice}</p> : null}
 
-              <button disabled={!viewModel.canManageTodos} type="submit">
-                Add task
-              </button>
-            </form>
-
-            {viewModel.todoTitleError ? (
-              <p className="field-error field-error--spaced">{viewModel.todoTitleError}</p>
-            ) : null}
-
-            {editingTodoId ? (
-              <form className="editor" onSubmit={(event) => void handleSaveEdit(event)}>
-                <label className="composer__field">
-                  <span>Edit task</span>
-                  <input
-                    disabled={!viewModel.canManageTodos}
-                    onChange={(event) => setEditingTitle(event.currentTarget.value)}
-                    value={editingTitle}
-                  />
-                </label>
-
-                <div className="editor__actions">
-                  <button disabled={!viewModel.canManageTodos} type="submit">
-                    Save
-                  </button>
-                  <button
-                    disabled={!viewModel.canManageTodos}
-                    onClick={cancelEditing}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : null}
-
-            {viewModel.showEmptyState ? (
-              <section className="empty-state">
-                <p className="empty-state__eyebrow">
-                  {activeWorkspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
+            <section className="workspace-switcher">
+              <div className="workspace-switcher__copy">
+                <p className="workspace-switcher__eyebrow">{getDesktopPageEyebrow(route)}</p>
+                <h3>{getDesktopRouteTitle(route, routedTeamWorkspace?.name)}</h3>
+                <p>
+                  {route.name === "dashboard"
+                    ? "Dashboard is now the default desktop entry point. Page-specific content will land in follow-up tasks."
+                    : route.name === "team-list"
+                      ? "Browse joined teams as their own destination before we move the full team workspace surface here."
+                      : route.name === "join-team"
+                        ? "This dedicated join team destination is in place. The full join form relocation will follow in a later task."
+                        : route.name === "create-team"
+                          ? "This dedicated create team destination is in place. The full create team form relocation will follow in a later task."
+                          : pageWorkspace
+                            ? getWorkspaceDescription(pageWorkspace)
+                            : "No personal or team workspace is available for this account yet."}
                 </p>
-                <h3>{emptyStateCopy.title}</h3>
-                <p>{emptyStateCopy.body}</p>
-              </section>
-            ) : null}
+              </div>
 
-            {viewModel.todos.length > 0 ? (
-              <ul className="todo-list">
-                {viewModel.todos.map((todo) => (
-                  <TodoRow
-                    disabled={!viewModel.canManageTodos}
-                    key={todo.id}
-                    onDelete={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
-                    onStartEdit={beginEditing}
-                    onToggleComplete={(entry) =>
-                      void (
-                        entry.completed
-                          ? controller.uncompleteTodo(entry.id)
-                          : controller.completeTodo(entry.id)
-                      ).catch(() => {})
-                    }
-                    todo={todo}
-                  />
-                ))}
-              </ul>
-            ) : null}
+              <div className="workspace-switcher__controls">
+                {route.name === "dashboard" ? (
+                  <div className="workspace-switcher__meta">
+                    <span className="workspace-badge workspace-badge--personal">Default entry</span>
+                    <span className="workspace-switcher__hint">
+                      Use the destination buttons above to move into my workspace, a team, join
+                      team, or create team flows.
+                    </span>
+                  </div>
+                ) : route.name === "team-list" ? (
+                  <div className="workspace-switcher__meta">
+                    <span className="workspace-badge workspace-badge--team">
+                      {teamWorkspaces.length} joined team{teamWorkspaces.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="workspace-switcher__hint">
+                      Open a dedicated team detail destination from this navigation surface.
+                    </span>
+                  </div>
+                ) : route.name === "join-team" ? (
+                  <div className="workspace-switcher__meta">
+                    <span className="workspace-badge workspace-badge--team">Join team</span>
+                    <span className="workspace-switcher__hint">
+                      Invite redemption will move here in task `2.3`.
+                    </span>
+                  </div>
+                ) : route.name === "create-team" ? (
+                  <div className="workspace-switcher__meta">
+                    <span className="workspace-badge workspace-badge--team">Create team</span>
+                    <span className="workspace-switcher__hint">
+                      Team creation will move here in task `2.3`.
+                    </span>
+                  </div>
+                ) : pageWorkspace ? (
+                  <>
+                    <label className="workspace-switcher__field">
+                      <span>Active workspace</span>
+                      <select
+                        disabled={pendingUi || viewModel.workspaces.length === 0}
+                        onChange={(event) =>
+                          void controller.selectWorkspace(event.currentTarget.value).catch(() => {})
+                        }
+                        value={viewModel.activeWorkspace?.id ?? ""}
+                      >
+                        {viewModel.workspaces.map((workspace) => (
+                          <option key={workspace.id} value={workspace.id}>
+                            {workspace.kind === "team" ? `Team: ${workspace.name}` : workspace.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-            {viewModel.screen === "error" ? (
-              <section className="empty-state empty-state--error">
-                <p className="empty-state__eyebrow">Sync needs attention</p>
-                <h3>We could not load the latest todos.</h3>
-                <p>Try refreshing after checking your network or Supabase configuration.</p>
-              </section>
-            ) : null}
+                    <div className="workspace-switcher__meta">
+                      <span className={`workspace-badge workspace-badge--${pageWorkspace.kind}`}>
+                        {getWorkspaceBadgeLabel(pageWorkspace)}
+                      </span>
+                      <span className="workspace-switcher__hint">
+                        {pageWorkspace.kind === "team"
+                          ? "Create, edit, complete, and delete actions apply to this shared team list."
+                          : "Create, edit, complete, and delete actions stay scoped to your personal list."}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </section>
+
+            {renderSignedInPage()}
           </>
         ) : null}
       </section>

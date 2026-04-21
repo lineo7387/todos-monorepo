@@ -1,0 +1,112 @@
+import { describe, expect, test } from "vite-plus/test";
+
+import {
+  extractInviteCode,
+  getCreateInviteSuccessOutcome,
+  getJoinInviteFailureFeedback,
+  getJoinInviteSuccessOutcome,
+} from "./invite-flow.ts";
+
+describe("extractInviteCode", () => {
+  test("returns a trimmed invite code when the input is already a code", () => {
+    expect(extractInviteCode("  joined-team-token  ")).toBe("joined-team-token");
+  });
+
+  test("extracts the invite code from a dashboard invite link", () => {
+    expect(extractInviteCode("https://example.com/dashboard/join?invite=team-token")).toBe(
+      "team-token",
+    );
+  });
+});
+
+describe("getCreateInviteSuccessOutcome", () => {
+  test("returns the desktop invite result copy and shareable fields", () => {
+    expect(
+      getCreateInviteSuccessOutcome({
+        token: "invite-token",
+        expiresAt: "2026-04-28T00:00:00.000Z",
+      }),
+    ).toEqual({
+      code: "invite-token",
+      expiresAt: "2026-04-28T00:00:00.000Z",
+      message:
+        "Invite ready to share. Teammates can paste this code into the desktop or dashboard join flow.",
+    });
+  });
+});
+
+describe("getJoinInviteSuccessOutcome", () => {
+  test("requests a workspace switch after joining a different workspace", () => {
+    expect(
+      getJoinInviteSuccessOutcome({
+        activeWorkspaceId: "personal:user-1",
+        workspace: {
+          id: "team-joined",
+          name: "Research",
+          teamId: "team-joined",
+        },
+      }),
+    ).toEqual({
+      feedback: {
+        kind: "success",
+        message:
+          "Invite accepted. Desktop opened Research so your team workspace is ready right away.",
+      },
+      route: { name: "team-detail", teamId: "team-joined" },
+      routeNotice:
+        "You can now work in Research. My workspace stays available from desktop navigation.",
+      selectWorkspaceId: "team-joined",
+    });
+  });
+
+  test("skips the extra switch when the joined workspace is already active", () => {
+    expect(
+      getJoinInviteSuccessOutcome({
+        activeWorkspaceId: "team-joined",
+        workspace: {
+          id: "team-joined",
+          name: "Research",
+          teamId: "team-joined",
+        },
+      }),
+    ).toEqual({
+      feedback: {
+        kind: "success",
+        message:
+          "Invite accepted. Desktop opened Research so your team workspace is ready right away.",
+      },
+      route: { name: "team-detail", teamId: "team-joined" },
+      routeNotice:
+        "You can now work in Research. My workspace stays available from desktop navigation.",
+      selectWorkspaceId: null,
+    });
+  });
+});
+
+describe("getJoinInviteFailureFeedback", () => {
+  test("preserves notice-level feedback from the latest controller state", () => {
+    expect(
+      getJoinInviteFailureFeedback({
+        error: new Error("fallback error"),
+        lastError: "That invite is no longer active.",
+        lastErrorKind: "notice",
+      }),
+    ).toEqual({
+      kind: "notice",
+      message: "That invite is no longer active.",
+    });
+  });
+
+  test("falls back to the thrown error message when controller state has no message", () => {
+    expect(
+      getJoinInviteFailureFeedback({
+        error: new Error("Invite code is required."),
+        lastError: null,
+        lastErrorKind: "validation",
+      }),
+    ).toEqual({
+      kind: "error",
+      message: "Invite code is required.",
+    });
+  });
+});

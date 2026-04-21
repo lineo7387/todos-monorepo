@@ -1,8 +1,8 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Users can manage personal todo items
 
-The system SHALL allow an authenticated user to create, view, update, complete, uncomplete, and delete todo items associated with that user's personal workspace, including an optional `dueDate` used for lightweight time-based organization.
+The system SHALL allow an authenticated user to create, view, update, complete, uncomplete, and delete todo items associated with that user's personal workspace, including an optional `dueDate` used for lightweight time-based organization. Supported clients that expose advanced task organization, including the desktop client, SHALL let the user set or edit that optional due date through the client UI.
 
 #### Scenario: User creates a todo item
 
@@ -21,7 +21,7 @@ The system SHALL allow an authenticated user to create, view, update, complete, 
 
 ### Requirement: Users can manage team todo items
 
-The system SHALL allow an authenticated team member to create, view, update, complete, uncomplete, and delete todo items associated with a team workspace they belong to, including an optional `dueDate` used for lightweight time-based organization.
+The system SHALL allow an authenticated team member to create, view, update, complete, uncomplete, and delete todo items associated with a team workspace they belong to, including an optional `dueDate` used for lightweight time-based organization. Supported clients that expose advanced task organization, including the desktop client, SHALL let the user set or edit that optional due date through the client UI.
 
 #### Scenario: User creates a team todo item
 
@@ -40,7 +40,7 @@ The system SHALL allow an authenticated team member to create, view, update, com
 
 ### Requirement: Task views support status-based filtering
 
-The system SHALL allow users to filter task lists within a workspace by all, active, and completed items.
+The system SHALL allow users to filter task lists within a workspace by all, active, and completed items. Clients that expose lightweight organization controls, including web and desktop, SHALL apply the selected filter consistently before rendering task counts, date-view counts, and selected-day inspection.
 
 #### Scenario: User filters to active tasks
 
@@ -54,7 +54,7 @@ The system SHALL allow users to filter task lists within a workspace by all, act
 
 ### Requirement: Time-based task views use optional due dates
 
-The system SHALL treat `dueDate` as an optional task field and only include dated tasks in date-based views such as due today, upcoming, overdue, or calendar day inspection.
+The system SHALL treat `dueDate` as an optional task field and only include dated tasks in date-based views such as due today, upcoming, overdue, or calendar day inspection. Clients that expose lightweight date views, including web and desktop, SHALL exclude undated tasks from those date-based slices while keeping them visible in the standard workspace list.
 
 #### Scenario: User views date-based tasks
 
