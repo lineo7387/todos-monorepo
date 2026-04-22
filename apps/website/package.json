@@ -11,8 +11,10 @@
   "dependencies": {
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-router-dom": "catalog:",
     "todo-app": "workspace:*",
-    "todo-data": "workspace:*"
+    "todo-data": "workspace:*",
+    "workspace-shell": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "catalog:",
