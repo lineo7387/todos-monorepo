@@ -1,3 +1,9 @@
+import {
+  WorkspaceShellDashboardPage,
+  type WorkspaceShellDashboardAction,
+  type WorkspaceShellDashboardStat,
+} from "workspace-shell";
+
 import type { WebsiteRoute } from "../routing/routes.ts";
 import { RouteLink } from "./route-link.tsx";
 import type { WebsiteWorkspace } from "./types.ts";
@@ -9,65 +15,64 @@ export interface DashboardPageProps {
 }
 
 export function DashboardPage({ onNavigate, personalWorkspace, teamCount }: DashboardPageProps) {
+  const actions: WorkspaceShellDashboardAction[] = [
+    {
+      body: "Open your personal task list as its own focused page.",
+      eyebrow: "My workspace",
+      route: { name: "personal-workspace" },
+      title: personalWorkspace?.name ?? "Personal workspace",
+    },
+    {
+      body: "Browse current memberships and jump to a dedicated team detail page.",
+      eyebrow: "Teams",
+      route: { name: "team-list" },
+      title: `${teamCount} joined team${teamCount === 1 ? "" : "s"}`,
+    },
+    {
+      body: "Use a dedicated join surface instead of layering flows into one workspace screen.",
+      eyebrow: "Join team",
+      route: { name: "join-team" },
+      title: "Accept an invite",
+    },
+    {
+      body: "Create a team from its own page and continue into the resulting detail view.",
+      eyebrow: "Create team",
+      route: { name: "create-team" },
+      title: "Start a shared workspace",
+    },
+  ];
+  const stats: WorkspaceShellDashboardStat[] = [
+    {
+      label: "My workspace",
+      value: personalWorkspace?.name ?? "Ready",
+    },
+    {
+      label: "Joined teams",
+      value: String(teamCount),
+    },
+    {
+      label: "Next focus",
+      value: "Join and create flows",
+    },
+  ];
+
   return (
-    <>
-      <section className="dashboard-hero">
-        <div>
-          <p className="page-eyebrow">Dashboard</p>
-          <h2>Keep your workspaces moving from one place.</h2>
-          <p className="dashboard-hero__body">
-            The web client now lands on a dedicated dashboard instead of a persistent two-column
-            shell, so each destination can have its own page shape.
-          </p>
-        </div>
-
-        <div className="dashboard-stats" role="list">
-          <div className="dashboard-stat" role="listitem">
-            <span>My workspace</span>
-            <strong>{personalWorkspace?.name ?? "Ready"}</strong>
-          </div>
-          <div className="dashboard-stat" role="listitem">
-            <span>Joined teams</span>
-            <strong>{teamCount}</strong>
-          </div>
-          <div className="dashboard-stat" role="listitem">
-            <span>Next focus</span>
-            <strong>Join and create flows</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className="page-grid">
+    <WorkspaceShellDashboardPage
+      actions={actions}
+      heroBody="The web client now lands on a dedicated dashboard instead of a persistent two-column shell, so each destination can have its own page shape."
+      renderActionCard={(action) => (
         <RouteLink
-          className="route-card route-card--feature"
+          className={`route-card ${action.route.name === "personal-workspace" ? "route-card--feature" : ""}`}
+          key={action.eyebrow}
           onNavigate={onNavigate}
-          route={{ name: "personal-workspace" }}
+          route={action.route as WebsiteRoute}
         >
-          <p className="page-eyebrow">My workspace</p>
-          <h3>{personalWorkspace?.name ?? "Personal workspace"}</h3>
-          <p>Open your personal task list as its own focused page.</p>
+          <p className="page-eyebrow">{action.eyebrow}</p>
+          <h3>{action.title}</h3>
+          <p>{action.body}</p>
         </RouteLink>
-
-        <RouteLink className="route-card" onNavigate={onNavigate} route={{ name: "team-list" }}>
-          <p className="page-eyebrow">Teams</p>
-          <h3>
-            {teamCount} joined team{teamCount === 1 ? "" : "s"}
-          </h3>
-          <p>Browse current memberships and jump to a dedicated team detail page.</p>
-        </RouteLink>
-
-        <RouteLink className="route-card" onNavigate={onNavigate} route={{ name: "join-team" }}>
-          <p className="page-eyebrow">Join team</p>
-          <h3>Accept an invite</h3>
-          <p>Use a dedicated join surface instead of layering flows into one workspace screen.</p>
-        </RouteLink>
-
-        <RouteLink className="route-card" onNavigate={onNavigate} route={{ name: "create-team" }}>
-          <p className="page-eyebrow">Create team</p>
-          <h3>Start a shared workspace</h3>
-          <p>Create a team from its own page and continue into the resulting detail view.</p>
-        </RouteLink>
-      </section>
-    </>
+      )}
+      stats={stats}
+    />
   );
 }

@@ -1,3 +1,9 @@
+import {
+  WorkspaceShellDashboardPage,
+  type WorkspaceShellDashboardAction,
+  type WorkspaceShellDashboardStat,
+} from "workspace-shell";
+
 import type { DesktopRoute } from "../routing/routes.ts";
 
 export interface DesktopDashboardPageProps {
@@ -16,41 +22,22 @@ export interface DesktopDashboardPageProps {
 
 export function DesktopDashboardPage({ actions, onNavigate, stats }: DesktopDashboardPageProps) {
   return (
-    <>
-      <section className="dashboard-hero">
-        <div>
-          <p className="page-eyebrow">Dashboard</p>
-          <h2>Keep your workspaces moving from one place.</h2>
-          <p className="dashboard-hero__body">
-            Open my workspace, check joined teams, or jump into join team and create team without
-            loading extra dashboard chrome.
-          </p>
-        </div>
-
-        <div className="dashboard-stats" role="list">
-          {stats.map((stat) => (
-            <div className="dashboard-stat" key={stat.label} role="listitem">
-              <span>{stat.label}</span>
-              <strong>{stat.value}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="page-grid">
-        {actions.map((action) => (
-          <button
-            className={`route-card ${action.route.name === "personal-workspace" ? "route-card--feature" : ""}`}
-            key={action.eyebrow}
-            onClick={() => onNavigate(action.route)}
-            type="button"
-          >
-            <p className="page-eyebrow">{action.eyebrow}</p>
-            <h3>{action.title}</h3>
-            <p>{action.body}</p>
-          </button>
-        ))}
-      </section>
-    </>
+    <WorkspaceShellDashboardPage
+      actions={actions as WorkspaceShellDashboardAction[]}
+      heroBody="Open my workspace, check joined teams, or jump into join team and create team without loading extra dashboard chrome."
+      renderActionCard={(action) => (
+        <button
+          className={`route-card ${action.route.name === "personal-workspace" ? "route-card--feature" : ""}`}
+          key={action.eyebrow}
+          onClick={() => onNavigate(action.route as DesktopRoute)}
+          type="button"
+        >
+          <p className="page-eyebrow">{action.eyebrow}</p>
+          <h3>{action.title}</h3>
+          <p>{action.body}</p>
+        </button>
+      )}
+      stats={stats as WorkspaceShellDashboardStat[]}
+    />
   );
 }

@@ -128,6 +128,30 @@ export interface WorkspaceShellResources {
 }
 
 export {
+  WorkspaceShellCreateTeamPage,
+  type WorkspaceShellCreateTeamPageProps,
+} from "./create-team-page.tsx";
+
+export {
+  WorkspaceShellDashboardPage,
+  type WorkspaceShellDashboardAction,
+  type WorkspaceShellDashboardPageProps,
+  type WorkspaceShellDashboardStat,
+} from "./dashboard-page.tsx";
+
+export {
+  WorkspaceShellJoinTeamPage,
+  type WorkspaceShellJoinTeamFeedback,
+  type WorkspaceShellJoinTeamPageProps,
+} from "./join-team-page.tsx";
+
+export {
+  WorkspaceShellTeamListPage,
+  type WorkspaceShellTeamListPageProps,
+  type WorkspaceShellTeamListPageTeam,
+} from "./team-list-page.tsx";
+
+export {
   WorkspaceTopNavigation,
   type RenderWorkspaceTopNavigationActionInput,
   type WorkspaceTopNavigationItem,

@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { WorkspaceShellJoinTeamPage, type WorkspaceShellJoinTeamFeedback } from "workspace-shell";
 
 import type { WebsiteRoute } from "../routing/routes.ts";
 import { RouteLink } from "./route-link.tsx";
@@ -28,79 +29,26 @@ export function JoinTeamPage({
   source,
 }: JoinTeamPageProps) {
   return (
-    <>
-      <section className="page-intro">
-        <div>
-          <p className="page-eyebrow">Join team</p>
-          <h2>Join a shared workspace with an invite.</h2>
-          <p>
-            Open a shared invite link or paste the invite code directly. After a successful join, we
-            will take you straight into the team detail page.
-          </p>
-        </div>
-        <div className="page-intro__actions">
-          <RouteLink
-            className="button-link button-link--muted"
-            onNavigate={onNavigate}
-            route={{ name: "dashboard" }}
-          >
-            Dashboard
-          </RouteLink>
-          <RouteLink
-            className="button-link button-link--muted"
-            onNavigate={onNavigate}
-            route={{ name: "team-list" }}
-          >
-            Teams
-          </RouteLink>
-        </div>
-      </section>
-
-      <section className="join-team-layout">
-        <form className="join-team-panel" onSubmit={onSubmit}>
-          <div>
-            <p className="page-eyebrow">
-              {source === "link" ? "Invite link opened" : "Invite code"}
-            </p>
-            <h3>
-              {source === "link"
-                ? "We prefilled the invite for you."
-                : "Paste an invite to continue."}
-            </h3>
-            <p className="join-team-panel__body">
-              Invite acceptance stays in the authenticated flow so the shared workspace appears in
-              your dashboard and team navigation as soon as membership is granted.
-            </p>
-          </div>
-
-          {feedback ? (
-            <div
-              className={`feedback-banner ${feedback.kind === "notice" ? "is-notice" : "is-error"}`}
-            >
-              <p>{feedback.message}</p>
-              <button onClick={onDismissFeedback} type="button">
-                Dismiss
-              </button>
-            </div>
-          ) : null}
-
-          <label className="join-team-panel__field">
-            <span>Invite code</span>
-            <input
-              autoCapitalize="none"
-              autoCorrect="off"
-              name="inviteCode"
-              onChange={(event) => onInviteCodeChange(event.currentTarget.value)}
-              placeholder="Paste invite code"
-              value={inviteCode}
-            />
-          </label>
-
-          <button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Joining team..." : "Join team"}
-          </button>
-        </form>
-
+    <WorkspaceShellJoinTeamPage
+      feedback={feedback as WorkspaceShellJoinTeamFeedback | null}
+      heroBody="Open a shared invite link or paste the invite code directly. After a successful join, we will take you straight into the team detail page."
+      inputName="inviteCode"
+      inputValue={inviteCode}
+      inviteBody="Invite acceptance stays in the authenticated flow so the shared workspace appears in your dashboard and team navigation as soon as membership is granted."
+      inviteEyebrow={source === "link" ? "Invite link opened" : "Invite code"}
+      inviteHeading={
+        source === "link" ? "We prefilled the invite for you." : "Paste an invite to continue."
+      }
+      isSubmitting={isSubmitting}
+      onDismissFeedback={onDismissFeedback}
+      onInputChange={onInviteCodeChange}
+      onSubmit={onSubmit}
+      renderNavigationAction={({ className, label, route }) => (
+        <RouteLink className={className} onNavigate={onNavigate} route={route as WebsiteRoute}>
+          {label}
+        </RouteLink>
+      )}
+      trailingContent={
         <section className="join-team-aside">
           <p className="page-eyebrow">What happens next</p>
           <h3>Membership sync keeps the workspace list current.</h3>
@@ -116,7 +64,7 @@ export function JoinTeamPage({
             Browse current teams
           </RouteLink>
         </section>
-      </section>
-    </>
+      }
+    />
   );
 }
