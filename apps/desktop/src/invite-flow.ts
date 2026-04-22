@@ -62,6 +62,7 @@ export function getJoinInviteSuccessOutcome(input: {
     route: {
       name: "team-detail",
       teamId: input.workspace.teamId ?? input.workspace.id,
+      section: "tasks",
     } satisfies DesktopRoute,
     routeNotice: `You can now work in ${input.workspace.name}. My workspace stays available from desktop navigation.`,
     selectWorkspaceId: input.activeWorkspaceId === input.workspace.id ? null : input.workspace.id,

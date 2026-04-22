@@ -52,7 +52,7 @@ describe("getJoinInviteSuccessOutcome", () => {
         message:
           "Invite accepted. Desktop opened Research so your team workspace is ready right away.",
       },
-      route: { name: "team-detail", teamId: "team-joined" },
+      route: { name: "team-detail", teamId: "team-joined", section: "tasks" },
       routeNotice:
         "You can now work in Research. My workspace stays available from desktop navigation.",
       selectWorkspaceId: "team-joined",
@@ -75,7 +75,7 @@ describe("getJoinInviteSuccessOutcome", () => {
         message:
           "Invite accepted. Desktop opened Research so your team workspace is ready right away.",
       },
-      route: { name: "team-detail", teamId: "team-joined" },
+      route: { name: "team-detail", teamId: "team-joined", section: "tasks" },
       routeNotice:
         "You can now work in Research. My workspace stays available from desktop navigation.",
       selectWorkspaceId: null,

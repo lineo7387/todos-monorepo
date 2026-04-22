@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { resolveDesktopRouteEffect } from "./route-effects.ts";
-import { getDefaultDesktopRoute, getDesktopRouteTitle } from "./routes.ts";
+import {
+  getDefaultDesktopRoute,
+  getDesktopRouteTitle,
+  getDesktopTeamSection,
+  getDesktopWorkspaceSection,
+  isDesktopRouteActive,
+} from "./routes.ts";
 
 describe("desktop routes", () => {
   test("uses dashboard as the signed-in default route", () => {
@@ -17,6 +23,38 @@ describe("desktop routes", () => {
     expect(getDesktopRouteTitle({ name: "team-detail", teamId: "team-1" }, "Research")).toBe(
       "Research",
     );
+  });
+
+  test("treats team detail pages as active within the joined teams navigation group", () => {
+    expect(
+      isDesktopRouteActive(
+        { name: "team-detail", teamId: "team-1", section: "date" },
+        { name: "team-list" },
+      ),
+    ).toBe(true);
+    expect(
+      isDesktopRouteActive(
+        { name: "team-detail", teamId: "team-1", section: "invite" },
+        { name: "team-detail", teamId: "team-1", section: "tasks" },
+      ),
+    ).toBe(true);
+    expect(
+      isDesktopRouteActive(
+        { name: "team-detail", teamId: "team-1" },
+        { name: "team-detail", teamId: "team-2" },
+      ),
+    ).toBe(false);
+  });
+
+  test("defaults workspace subsections to tasks when no explicit section is present", () => {
+    expect(getDesktopWorkspaceSection({ name: "personal-workspace" })).toBe("tasks");
+    expect(getDesktopWorkspaceSection({ name: "personal-workspace", section: "date" })).toBe(
+      "date",
+    );
+    expect(getDesktopTeamSection({ name: "team-detail", teamId: "team-1" })).toBe("tasks");
+    expect(
+      getDesktopTeamSection({ name: "team-detail", teamId: "team-1", section: "invite" }),
+    ).toBe("invite");
   });
 });
 

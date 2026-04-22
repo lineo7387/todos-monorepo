@@ -9,9 +9,13 @@
 - [x] 2.1 Move the existing personal workspace task surface into a dedicated `my workspace` desktop destination without regressing `dueDate`, filters, or date views
 - [x] 2.2 Move the existing team workspace task surface and invite creation UI into a dedicated desktop `team detail` destination
 - [x] 2.3 Move desktop invite redemption and team creation into dedicated `join team` and `create team` destinations while preserving the shared workspace-first behavior
-- [ ] 2.4 Add safe desktop handling for unavailable team-detail destinations so unauthorized teams do not expose task or team metadata
+- [x] 2.4 Add safe desktop handling for unavailable team-detail destinations so unauthorized teams do not expose task or team metadata
 
 ## 3. Verification
 
-- [ ] 3.1 Add automated coverage for desktop route resolution, dashboard default-entry behavior, and safe team-detail handling
-- [ ] 3.2 Run `vp check`, `vp test`, `vp run desktop#check`, and `vp run desktop#build` after implementation changes land
+- [x] 3.1 Add automated coverage for desktop route resolution, dashboard default-entry behavior, and safe team-detail handling
+- [x] 3.2 Run `vp check`, `vp test`, `vp run desktop#check`, and `vp run desktop#build` after implementation changes land
+
+## 4. Desktop/Web design parity follow-up
+
+- [x] 4.1 Align the desktop signed-in navigation and page composition with the current web page structure for `dashboard`, `my workspace`, `joined teams`, `join team`, and `create team` while preserving desktop-appropriate layout

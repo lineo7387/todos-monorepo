@@ -47,7 +47,7 @@ export function deriveDesktopDashboard(
           ? "Open your personal task list as its own desktop destination."
           : "Your personal workspace will appear here as soon as it is available.",
         eyebrow: "My workspace",
-        route: { name: "personal-workspace" },
+        route: { name: "personal-workspace", section: "tasks" },
         title: input.personalWorkspace?.name ?? "Personal workspace",
       },
       {
@@ -90,7 +90,7 @@ export function deriveDesktopDashboard(
     teamEntries: input.teamWorkspaces.map((workspace) => ({
       id: workspace.id,
       isActive: workspace.id === input.activeWorkspaceId,
-      route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id },
+      route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id, section: "tasks" },
       title: workspace.name,
     })),
     teamEmptyState: "No joined teams yet. Create one or accept an invite from dashboard.",

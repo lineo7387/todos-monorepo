@@ -115,6 +115,11 @@ h3 {
   gap: 24px;
 }
 
+.app-shell--signed-in {
+  width: min(1180px, calc(100% - 40px));
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .hero-panel,
 .workspace-panel,
 .setup-panel {
@@ -153,7 +158,8 @@ h3 {
 .auth-panel__eyebrow,
 .empty-state__eyebrow,
 .todo-card__eyebrow,
-.workspace-switcher__eyebrow {
+.workspace-switcher__eyebrow,
+.page-eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: 0.72rem;
@@ -197,6 +203,10 @@ h3 {
 .workspace-panel {
   background: rgba(255, 252, 246, 0.84);
   padding: 28px;
+}
+
+.app-shell--signed-in .workspace-panel {
+  min-width: 0;
 }
 
 .workspace-header {
@@ -300,6 +310,10 @@ h3 {
 }
 
 .auth-panel,
+.top-nav,
+.page-intro,
+.workspace-subnav,
+.workspace-summary,
 .workspace-switcher,
 .team-invite-panel,
 .team-join-panel,
@@ -348,7 +362,9 @@ h3 {
 .workspace-switcher__copy h3,
 .team-invite-panel__copy h3,
 .team-join-panel__copy h3,
-.task-filter-bar__copy h3 {
+.task-filter-bar__copy h3,
+.page-intro h2,
+.top-nav h2 {
   margin-top: 0.65rem;
   font: 600 1.8rem/1.08 var(--serif);
 }
@@ -356,6 +372,19 @@ h3 {
 .auth-form,
 .composer,
 .editor,
+.top-nav,
+.top-nav__header,
+.top-nav__primary,
+.top-nav__teams,
+.top-nav__team-list,
+.top-nav__link,
+.page-intro,
+.page-intro__actions,
+.workspace-subnav,
+.page-grid,
+.workspace-summary,
+.workspace-summary__meta,
+.standalone-form,
 .dashboard-hero,
 .dashboard-grid,
 .workspace-switcher,
@@ -389,9 +418,70 @@ h3 {
   gap: 20px;
 }
 
+.page-grid,
 .dashboard-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.top-nav__header,
+.page-intro {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: start;
+}
+
+.top-nav__body,
+.page-intro > div:first-child p:last-child {
+  color: var(--text-muted);
+}
+
+.top-nav__primary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.top-nav__teams {
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  border: 1px solid rgba(31, 41, 55, 0.08);
+}
+
+.top-nav__teams-copy,
+.top-nav__empty {
+  color: var(--text-muted);
+}
+
+.top-nav__team-list {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.top-nav__link {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(31, 41, 55, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  text-align: left;
+}
+
+.top-nav__link span {
+  color: var(--text-muted);
+}
+
+.top-nav__link strong {
+  font: 600 1rem/1.2 var(--serif);
+}
+
+.top-nav__link.is-active {
+  background: var(--text);
+  color: #fffdf8;
+}
+
+.top-nav__link.is-active span {
+  color: rgba(255, 253, 248, 0.72);
 }
 
 .dashboard-stats {
@@ -444,6 +534,22 @@ h3 {
 .workspace-switcher {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.92fr);
   gap: 20px;
+}
+
+.workspace-subnav {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+  gap: 10px;
+  justify-content: start;
+}
+
+.workspace-subnav button {
+  background: rgba(31, 41, 55, 0.08);
+  color: var(--text);
+}
+
+.workspace-subnav button.is-active {
+  background: var(--text);
+  color: #fffdf8;
 }
 
 .team-invite-panel {
@@ -575,6 +681,17 @@ h3 {
   border: 1px solid rgba(31, 41, 55, 0.08);
 }
 
+.workspace-summary__meta {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  border: 1px solid rgba(31, 41, 55, 0.08);
+}
+
+.standalone-form {
+  max-width: 520px;
+}
+
 .workspace-badge {
   width: fit-content;
   border-radius: 999px;
@@ -692,8 +809,11 @@ h3 {
   }
 
   .dashboard-hero,
+  .page-grid,
   .dashboard-grid,
-  .dashboard-stats {
+  .dashboard-stats,
+  .top-nav__primary,
+  .top-nav__teams {
     grid-template-columns: 1fr;
   }
 }
@@ -712,12 +832,15 @@ h3 {
   }
 
   .workspace-header,
+  .top-nav__header,
+  .page-intro,
   .workspace-switcher,
   .team-invite-panel,
   .team-join-panel,
   .task-filter-bar,
   .todo-card,
-  .composer {
+  .composer,
+  .page-grid {
     grid-template-columns: 1fr;
   }
 

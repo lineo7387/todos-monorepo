@@ -25,11 +25,18 @@ import {
   DesktopCreateTeamPage,
   DesktopDashboardPage,
   DesktopJoinTeamPage,
+  DesktopTopLevelNavigation,
   DesktopTeamListPage,
   DesktopWorkspacePage,
 } from "./pages.tsx";
 import { resolveDesktopRouteEffect } from "./route-effects.ts";
-import { getDefaultDesktopRoute, getDesktopRouteTitle, type DesktopRoute } from "./routes.ts";
+import {
+  getDefaultDesktopRoute,
+  getDesktopRouteTitle,
+  getDesktopTeamSection,
+  getDesktopWorkspaceSection,
+  type DesktopRoute,
+} from "./routes.ts";
 import {
   deriveDesktopTaskView,
   type DesktopDateView,
@@ -129,10 +136,6 @@ function formatInviteExpiry(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function getWorkspaceBadgeLabel(workspace: DesktopWorkspace): string {
-  return workspace.kind === "team" ? "Team workspace" : "Personal workspace";
 }
 
 function getWorkspaceDescription(workspace: DesktopWorkspace): string {
@@ -337,6 +340,8 @@ export function App() {
     personalWorkspace,
     teamWorkspaces,
   });
+  const personalWorkspaceSection = getDesktopWorkspaceSection(route);
+  const teamDetailSection = getDesktopTeamSection(route);
 
   useEffect(() => {
     setTeamInviteCode("");
@@ -458,7 +463,11 @@ export function App() {
       })
       .then((workspace) => {
         setDraftTeamName("");
-        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
+        navigate({
+          name: "team-detail",
+          teamId: workspace.teamId ?? workspace.id,
+          section: "tasks",
+        });
       })
       .catch(() => {});
   }
@@ -849,7 +858,11 @@ export function App() {
             teams={teamWorkspaces.map((workspace) => ({
               id: workspace.id,
               name: workspace.name,
-              route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id },
+              route: {
+                name: "team-detail",
+                teamId: workspace.teamId ?? workspace.id,
+                section: "tasks",
+              },
             }))}
           />
         );
@@ -878,8 +891,39 @@ export function App() {
       case "team-detail":
         return (
           <DesktopWorkspacePage
-            activeDateViewLabel={getDesktopDateViewLabel(dateView)}
-            activeTaskFilterLabel={getDesktopTaskFilterLabel(taskFilter)}
+            section={route.name === "team-detail" ? teamDetailSection : personalWorkspaceSection}
+            sectionRoutes={
+              route.name === "team-detail" && pageWorkspace?.kind === "team"
+                ? [
+                    {
+                      isActive: teamDetailSection === "tasks",
+                      label: "Tasks",
+                      route: { name: "team-detail", teamId: route.teamId, section: "tasks" },
+                    },
+                    {
+                      isActive: teamDetailSection === "date",
+                      label: "Date",
+                      route: { name: "team-detail", teamId: route.teamId, section: "date" },
+                    },
+                    {
+                      isActive: teamDetailSection === "invite",
+                      label: "Invite",
+                      route: { name: "team-detail", teamId: route.teamId, section: "invite" },
+                    },
+                  ]
+                : [
+                    {
+                      isActive: personalWorkspaceSection === "tasks",
+                      label: "Tasks",
+                      route: { name: "personal-workspace", section: "tasks" },
+                    },
+                    {
+                      isActive: personalWorkspaceSection === "date",
+                      label: "Date",
+                      route: { name: "personal-workspace", section: "date" },
+                    },
+                  ]
+            }
             canManageTodos={viewModel.canManageTodos}
             composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
             dateControls={renderDateControls()}
@@ -930,39 +974,44 @@ export function App() {
     return null;
   }
 
-  return (
-    <main className="app-shell">
-      <section className="hero-panel">
-        <p className="hero-panel__eyebrow">Cross-platform todos</p>
-        <h1>Shared workspace flows inside the Electron desktop shell.</h1>
-        <p className="hero-panel__body">
-          This renderer is wired to the shared auth, sync, optimistic update, and workspace state
-          flow from the monorepo packages.
-        </p>
+  const showHeroPanel =
+    viewModel.screen === "auth" || (viewModel.screen === "loading" && !viewModel.isAuthenticated);
 
-        <div className="hero-panel__highlights" role="list">
-          <div role="listitem">
-            <strong>Desktop parity</strong>
-            <span>
-              Sign-in, workspace switching, create team, and todo CRUD behave like the web and
-              mobile clients.
-            </span>
+  return (
+    <main className={`app-shell ${viewModel.isAuthenticated ? "app-shell--signed-in" : ""}`}>
+      {showHeroPanel ? (
+        <section className="hero-panel">
+          <p className="hero-panel__eyebrow">Cross-platform todos</p>
+          <h1>Shared workspace flows inside the Electron desktop shell.</h1>
+          <p className="hero-panel__body">
+            This renderer is wired to the shared auth, sync, optimistic update, and workspace state
+            flow from the monorepo packages.
+          </p>
+
+          <div className="hero-panel__highlights" role="list">
+            <div role="listitem">
+              <strong>Desktop parity</strong>
+              <span>
+                Sign-in, workspace switching, create team, and todo CRUD behave like the web and
+                mobile clients.
+              </span>
+            </div>
+            <div role="listitem">
+              <strong>Supabase-backed</strong>
+              <span>
+                Auth, persisted todos, and workspace membership all reuse the same shared adapters.
+              </span>
+            </div>
+            <div role="listitem">
+              <strong>Minimal shell</strong>
+              <span>
+                Electron hosts the renderer while `todo-app` and `todo-data` continue to own core
+                product behavior.
+              </span>
+            </div>
           </div>
-          <div role="listitem">
-            <strong>Supabase-backed</strong>
-            <span>
-              Auth, persisted todos, and workspace membership all reuse the same shared adapters.
-            </span>
-          </div>
-          <div role="listitem">
-            <strong>Minimal shell</strong>
-            <span>
-              Electron hosts the renderer while `todo-app` and `todo-data` continue to own core
-              product behavior.
-            </span>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="workspace-panel">
         <header className="workspace-header">
@@ -1100,151 +1149,22 @@ export function App() {
 
         {viewModel.isAuthenticated ? (
           <>
-            <section className="workspace-switcher">
-              <div className="workspace-switcher__copy">
-                <p className="workspace-switcher__eyebrow">Workspace navigation</p>
-                <h3>{getDesktopRouteTitle(route, routedTeamWorkspace?.name)}</h3>
-                <p>
-                  Desktop now uses page-level destinations so dashboard, my workspace, joined teams,
-                  and team actions no longer have to share one combined signed-in screen.
-                </p>
-              </div>
-
-              <div className="workspace-switcher__controls">
-                <div className="task-filter-bar__controls">
-                  {(
-                    [
-                      { label: "Dashboard", route: { name: "dashboard" } },
-                      { label: "My workspace", route: { name: "personal-workspace" } },
-                      { label: "Teams", route: { name: "team-list" } },
-                      { label: "Join team", route: { name: "join-team" } },
-                      { label: "Create team", route: { name: "create-team" } },
-                    ] as const
-                  ).map((entry) => (
-                    <button
-                      className={route.name === entry.route.name ? "is-active" : ""}
-                      key={entry.label}
-                      onClick={() => navigate(entry.route)}
-                      type="button"
-                    >
-                      {entry.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="workspace-switcher__meta">
-                  {personalWorkspace ? (
-                    <button onClick={() => navigate({ name: "personal-workspace" })} type="button">
-                      My workspace
-                    </button>
-                  ) : null}
-                  {teamWorkspaces.map((workspace) => (
-                    <button
-                      className={
-                        route.name === "team-detail" &&
-                        route.teamId === (workspace.teamId ?? workspace.id)
-                          ? "is-active"
-                          : ""
-                      }
-                      key={workspace.id}
-                      onClick={() =>
-                        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id })
-                      }
-                      type="button"
-                    >
-                      {workspace.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
+            <DesktopTopLevelNavigation
+              currentRoute={route}
+              onNavigate={navigate}
+              personalWorkspace={personalWorkspace}
+              teams={teamWorkspaces.map((workspace) => ({
+                id: workspace.id,
+                name: workspace.name,
+                route: {
+                  name: "team-detail",
+                  teamId: workspace.teamId ?? workspace.id,
+                  section: "tasks",
+                },
+              }))}
+            />
 
             {routeNotice ? <p className="info-banner">{routeNotice}</p> : null}
-
-            <section className="workspace-switcher">
-              <div className="workspace-switcher__copy">
-                <p className="workspace-switcher__eyebrow">{getDesktopPageEyebrow(route)}</p>
-                <h3>{getDesktopRouteTitle(route, routedTeamWorkspace?.name)}</h3>
-                <p>
-                  {route.name === "dashboard"
-                    ? "Dashboard is now the default desktop entry point. Page-specific content will land in follow-up tasks."
-                    : route.name === "team-list"
-                      ? "Browse joined teams as their own destination before we move the full team workspace surface here."
-                      : route.name === "join-team"
-                        ? "This dedicated join team destination is in place. The full join form relocation will follow in a later task."
-                        : route.name === "create-team"
-                          ? "This dedicated create team destination is in place. The full create team form relocation will follow in a later task."
-                          : pageWorkspace
-                            ? getWorkspaceDescription(pageWorkspace)
-                            : "No personal or team workspace is available for this account yet."}
-                </p>
-              </div>
-
-              <div className="workspace-switcher__controls">
-                {route.name === "dashboard" ? (
-                  <div className="workspace-switcher__meta">
-                    <span className="workspace-badge workspace-badge--personal">Default entry</span>
-                    <span className="workspace-switcher__hint">
-                      Use the destination buttons above to move into my workspace, a team, join
-                      team, or create team flows.
-                    </span>
-                  </div>
-                ) : route.name === "team-list" ? (
-                  <div className="workspace-switcher__meta">
-                    <span className="workspace-badge workspace-badge--team">
-                      {teamWorkspaces.length} joined team{teamWorkspaces.length === 1 ? "" : "s"}
-                    </span>
-                    <span className="workspace-switcher__hint">
-                      Open a dedicated team detail destination from this navigation surface.
-                    </span>
-                  </div>
-                ) : route.name === "join-team" ? (
-                  <div className="workspace-switcher__meta">
-                    <span className="workspace-badge workspace-badge--team">Join team</span>
-                    <span className="workspace-switcher__hint">
-                      Invite redemption will move here in task `2.3`.
-                    </span>
-                  </div>
-                ) : route.name === "create-team" ? (
-                  <div className="workspace-switcher__meta">
-                    <span className="workspace-badge workspace-badge--team">Create team</span>
-                    <span className="workspace-switcher__hint">
-                      Team creation will move here in task `2.3`.
-                    </span>
-                  </div>
-                ) : pageWorkspace ? (
-                  <>
-                    <label className="workspace-switcher__field">
-                      <span>Active workspace</span>
-                      <select
-                        disabled={pendingUi || viewModel.workspaces.length === 0}
-                        onChange={(event) =>
-                          void controller.selectWorkspace(event.currentTarget.value).catch(() => {})
-                        }
-                        value={viewModel.activeWorkspace?.id ?? ""}
-                      >
-                        {viewModel.workspaces.map((workspace) => (
-                          <option key={workspace.id} value={workspace.id}>
-                            {workspace.kind === "team" ? `Team: ${workspace.name}` : workspace.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <div className="workspace-switcher__meta">
-                      <span className={`workspace-badge workspace-badge--${pageWorkspace.kind}`}>
-                        {getWorkspaceBadgeLabel(pageWorkspace)}
-                      </span>
-                      <span className="workspace-switcher__hint">
-                        {pageWorkspace.kind === "team"
-                          ? "Create, edit, complete, and delete actions apply to this shared team list."
-                          : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-                      </span>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            </section>
 
             {renderSignedInPage()}
           </>

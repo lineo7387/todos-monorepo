@@ -4,6 +4,8 @@ The web client has already established the intended signed-in information archit
 
 This creates a structural mismatch across clients. The shared `todo-app` controller already owns authentication, workspace selection, invite creation/redeem, todo CRUD, and refresh behavior, so the desktop gap is not a missing domain capability. The missing piece is desktop-local route and page composition that makes those capabilities feel like the same product shape as web.
 
+The local implementation has already moved desktop onto the same route vocabulary as web, but the current spec/design language has been too easy to read as "route names match, so parity is done." That is not the intended bar for this change. Desktop should align not only on destination names, but also on the main signed-in page structure and the placement of primary flows, so a user moving between web and desktop sees recognizably the same product model.
+
 The project constraints still apply:
 
 - Dashboard should be the default entry.
@@ -23,6 +25,7 @@ The project constraints still apply:
 - Preserve the existing desktop invite, join, due-date, task-filter, and date-view functionality while relocating it into page-level desktop screens.
 - Keep desktop route resolution and dashboard/workspace derivation testable through pure helpers rather than renderer-only tests.
 - Align the desktop information architecture closely enough with web that future i18n can share stable conceptual destinations across clients.
+- Align desktop page composition and primary navigation hierarchy closely enough with web that the signed-in experience feels like the same product flow, not merely the same route labels.
 
 **Non-Goals:**
 
@@ -44,12 +47,22 @@ Alternatives considered:
 
 ### Mirror web page concepts without forcing identical layout
 
-Desktop should gain page-level components or sections that correspond to the web app's destinations, but the visual layout can remain desktop-appropriate. For example, dashboard summaries and navigation cards can be denser than web, while workspace pages can still prioritize the larger desktop task surface.
+Desktop should gain page-level components or sections that correspond to the web app's destinations, and the major content regions on each page should stay recognizably aligned with web. The visual layout can remain desktop-appropriate, but the experience should not collapse into a generic shell that happens to swap route names.
+
+For this change, "aligned with web" means:
+
+- The signed-in navigation exposes the same primary destination hierarchy as web: `dashboard`, `my workspace`, `joined teams`, `join team`, and `create team`, with joined-team shortcuts remaining visible from signed-in navigation.
+- The desktop dashboard keeps the same core page shape as web: a dashboard intro/hero, summary stats, destination cards, and joined-team quick links.
+- `my workspace` and `team detail` remain dedicated pages with a page intro, workspace-scoped actions, task controls, and the task surface rather than being presented as a leftover slice of a shared shell.
+- `join team` and `create team` remain dedicated pages whose forms are the primary focus of the page, with supporting links back to dashboard and team navigation.
+
+Desktop may use denser copy, different typography, or a layout better suited for Electron, but it should preserve the same page-level intent and the same ordering of primary flows that web establishes.
 
 Alternatives considered:
 
 - Copy the web page tree one-to-one: rejected because it increases coupling and ignores desktop-specific affordances.
 - Keep desktop page names different from web: rejected because it weakens cross-client parity and complicates future i18n terminology.
+- Treat matching route names as sufficient parity: rejected because it leaves the page model and user mental model drifting across clients.
 
 ### Keep workspace selection and access control grounded in shared controller state
 
@@ -75,17 +88,19 @@ Alternatives considered:
 - [The desktop shell becomes over-segmented and awkward compared with current single-surface workflows] -> Mitigation: keep navigation shallow and preserve quick links between dashboard and workspace pages.
 - [Workspace loading flashes or wrong-page states appear during route transitions] -> Mitigation: centralize route effect resolution and explicitly model loading-safe fallbacks.
 - [This refactor increases code volume in `apps/desktop`] -> Mitigation: split route/page helpers and page sections into focused modules instead of growing a single `App.tsx`.
+- [Desktop keeps route parity but still feels visually and structurally unlike web] -> Mitigation: define parity in terms of page composition and primary navigation landmarks, not only route identifiers.
 
 ## Migration Plan
 
 1. Introduce desktop route types, route helpers, and dashboard/workspace page derivation helpers.
 2. Refactor the signed-in desktop shell to render page-level destinations with dashboard as the default entry.
 3. Move existing invite/join/task-organization UI into the relevant desktop pages without changing their underlying shared mutations.
-4. Add targeted desktop automated coverage for route effects, default entry behavior, and safe team-detail handling.
-5. Validate with the standard desktop and repository checks.
-6. Roll back by restoring the current single-surface desktop shell while leaving the shared invite and task-organization capabilities intact.
+4. Align desktop page composition and navigation landmarks with the existing web destinations while preserving desktop-specific layout freedom.
+5. Add targeted desktop automated coverage for route effects, default entry behavior, and safe team-detail handling.
+6. Validate with the standard desktop and repository checks.
+7. Roll back by restoring the current single-surface desktop shell while leaving the shared invite and task-organization capabilities intact.
 
 ## Open Questions
 
 - Should desktop keep lightweight in-memory back/forward history for page navigation, or is direct destination switching sufficient for the first pass?
-- Should dashboard surface counts and summaries exactly match web copy, or can desktop use slightly denser summary language while keeping the same destination names?
+- Should dashboard surface counts and summaries exactly match web copy, or can desktop use slightly denser summary language while keeping the same destination names and section order?

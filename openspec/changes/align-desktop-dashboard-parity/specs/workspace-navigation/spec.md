@@ -2,7 +2,7 @@
 
 ### Requirement: Authenticated users can navigate workspaces through dedicated pages
 
-The system SHALL provide dedicated signed-in destinations for dashboard, personal workspace, team list, team detail, join team, and create team flows instead of relying solely on a single combined workspace screen. Web SHALL use URL-backed routes for these destinations, and desktop SHALL expose the same destination model through explicit local route state.
+The system SHALL provide dedicated signed-in destinations for dashboard, personal workspace, team list, team detail, join team, and create team flows instead of relying solely on a single combined workspace screen. Web SHALL use URL-backed routes for these destinations, and desktop SHALL expose the same destination model through explicit local route state and page-level composition that remains recognizably aligned with web.
 
 #### Scenario: Signed-in user opens the app
 
@@ -13,6 +13,11 @@ The system SHALL provide dedicated signed-in destinations for dashboard, persona
 
 - **WHEN** an authenticated user navigates to a team workspace they belong to
 - **THEN** the system loads that team workspace as a dedicated detail page with its task list and team-specific actions
+
+#### Scenario: User switches between supported clients
+
+- **WHEN** an authenticated user moves between web and desktop while signed in
+- **THEN** both clients present the same major destination hierarchy and page-level flow order for dashboard, my workspace, joined teams, join team, and create team, even if the exact layout treatment differs
 
 ### Requirement: Team list navigation reflects current memberships
 

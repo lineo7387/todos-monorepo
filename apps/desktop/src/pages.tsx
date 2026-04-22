@@ -1,6 +1,11 @@
 import type { FormEvent, ReactNode } from "react";
 
-import type { DesktopRoute } from "./routes.ts";
+import {
+  isDesktopRouteActive,
+  type DesktopRoute,
+  type DesktopTeamSection,
+  type DesktopWorkspaceSection,
+} from "./routes.ts";
 
 interface DesktopActionLinkProps {
   children: ReactNode;
@@ -39,6 +44,19 @@ export interface DesktopTeamListPageProps {
   }>;
 }
 
+export interface DesktopTopLevelNavigationProps {
+  currentRoute: DesktopRoute;
+  onNavigate: (route: DesktopRoute) => void;
+  personalWorkspace: {
+    name: string;
+  } | null;
+  teams: Array<{
+    id: string;
+    name: string;
+    route: DesktopRoute;
+  }>;
+}
+
 export interface DesktopJoinTeamPageProps {
   feedback: {
     kind: "error" | "notice" | "success";
@@ -60,8 +78,12 @@ export interface DesktopCreateTeamPageProps {
 }
 
 export interface DesktopWorkspacePageProps {
-  activeDateViewLabel: string;
-  activeTaskFilterLabel: string;
+  section: DesktopWorkspaceSection | DesktopTeamSection;
+  sectionRoutes: Array<{
+    isActive: boolean;
+    label: string;
+    route: DesktopRoute;
+  }>;
   canManageTodos: boolean;
   dateControls: ReactNode;
   emptyState: ReactNode;
@@ -99,6 +121,66 @@ function DesktopActionLink({ children, className, onNavigate, route }: DesktopAc
   );
 }
 
+export function DesktopTopLevelNavigation({
+  currentRoute,
+  onNavigate,
+  personalWorkspace,
+  teams,
+}: DesktopTopLevelNavigationProps) {
+  return (
+    <nav aria-label="Workspace navigation" className="top-nav">
+      <div className="top-nav__primary" role="list">
+        {(
+          [
+            { label: "Dashboard", route: { name: "dashboard" } satisfies DesktopRoute },
+            {
+              label: "My workspace",
+              route: { name: "personal-workspace", section: "tasks" } satisfies DesktopRoute,
+            },
+            {
+              label: "Joined teams",
+              route: { name: "team-list" } satisfies DesktopRoute,
+            },
+            { label: "Join team", route: { name: "join-team" } satisfies DesktopRoute },
+            { label: "Create team", route: { name: "create-team" } satisfies DesktopRoute },
+          ] as const
+        ).map((entry) => (
+          <button
+            className={`top-nav__link ${isDesktopRouteActive(currentRoute, entry.route) ? "is-active" : ""}`}
+            key={entry.label}
+            onClick={() => onNavigate(entry.route)}
+            role="listitem"
+            type="button"
+          >
+            <strong>{entry.label}</strong>
+          </button>
+        ))}
+      </div>
+
+      {teams.length > 0 ? (
+        <div className="top-nav__teams">
+          <span className="top-nav__teams-label">
+            {personalWorkspace ? personalWorkspace.name : "Teams"}
+          </span>
+          <div className="top-nav__team-list" role="list">
+            {teams.map((team) => (
+              <button
+                className={`top-nav__link ${isDesktopRouteActive(currentRoute, team.route) ? "is-active" : ""}`}
+                key={team.id}
+                onClick={() => onNavigate(team.route)}
+                role="listitem"
+                type="button"
+              >
+                <strong>{team.name}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </nav>
+  );
+}
+
 export function DesktopDashboardPage({
   actions,
   onNavigate,
@@ -110,13 +192,8 @@ export function DesktopDashboardPage({
     <>
       <section className="dashboard-hero">
         <div>
-          <p className="empty-state__eyebrow">Dashboard</p>
-          <h3>Keep my workspace and team flows moving from one place.</h3>
-          <p>
-            Desktop now opens into dashboard first, with direct entry points to my workspace, joined
-            teams, join team, and create team instead of pushing every flow into one combined
-            signed-in screen.
-          </p>
+          <p className="page-eyebrow">Dashboard</p>
+          <h2>Keep your workspaces moving from one place.</h2>
         </div>
 
         <div className="dashboard-stats" role="list">
@@ -129,7 +206,7 @@ export function DesktopDashboardPage({
         </div>
       </section>
 
-      <section className="dashboard-grid">
+      <section className="page-grid">
         {actions.map((action) => (
           <button
             className="dashboard-card"
@@ -139,44 +216,38 @@ export function DesktopDashboardPage({
           >
             <p className="empty-state__eyebrow">{action.eyebrow}</p>
             <h3>{action.title}</h3>
-            <p>{action.body}</p>
           </button>
         ))}
       </section>
 
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">Joined teams</p>
-          <h3>Quick team entry points stay visible from dashboard.</h3>
-          <p>
-            Open a dedicated team detail destination directly from dashboard without changing the
-            shared workspace-first model underneath.
-          </p>
-        </div>
-
-        <div className="workspace-switcher__controls">
-          {teamEntries.length > 0 ? (
-            <div className="dashboard-team-list" role="list">
-              {teamEntries.map((team) => (
-                <button
-                  className={team.isActive ? "is-active" : ""}
-                  key={team.id}
-                  onClick={() => onNavigate(team.route)}
-                  role="listitem"
-                  type="button"
-                >
-                  {team.title}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="workspace-switcher__meta">
-              <span className="workspace-badge workspace-badge--team">Joined teams</span>
-              <span className="workspace-switcher__hint">{teamEmptyState}</span>
-            </div>
-          )}
-        </div>
-      </section>
+      {teamEntries.length > 0 ? (
+        <section className="workspace-switcher workspace-switcher--compact">
+          <div className="workspace-switcher__controls">
+            {teamEntries.length > 0 ? (
+              <div className="dashboard-team-list" role="list">
+                {teamEntries.map((team) => (
+                  <button
+                    className={team.isActive ? "is-active" : ""}
+                    key={team.id}
+                    onClick={() => onNavigate(team.route)}
+                    role="listitem"
+                    type="button"
+                  >
+                    {team.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : (
+        <section className="workspace-summary">
+          <div className="workspace-summary__meta">
+            <span className="workspace-badge workspace-badge--team">Joined teams</span>
+            <span className="workspace-switcher__hint">{teamEmptyState}</span>
+          </div>
+        </section>
+      )}
     </>
   );
 }
@@ -184,37 +255,28 @@ export function DesktopDashboardPage({
 export function DesktopTeamListPage({ onNavigate, teams }: DesktopTeamListPageProps) {
   return (
     <>
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">Joined teams</p>
-          <h3>Team workspaces</h3>
+      <section className="page-intro">
+        <div>
+          <p className="page-eyebrow">Joined teams</p>
+          <h2>Team workspaces</h2>
           <p>Open each shared workspace from its own desktop team detail destination.</p>
         </div>
 
-        <div className="workspace-switcher__controls">
-          <div className="workspace-switcher__meta">
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "dashboard" }}
-            >
-              Dashboard
-            </DesktopActionLink>
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "join-team" }}
-            >
-              Join team
-            </DesktopActionLink>
-            <DesktopActionLink
-              className="button-link"
-              onNavigate={onNavigate}
-              route={{ name: "create-team" }}
-            >
-              Create team
-            </DesktopActionLink>
-          </div>
+        <div className="page-intro__actions">
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "dashboard" }}
+          >
+            Dashboard
+          </DesktopActionLink>
+          <DesktopActionLink
+            className="button-link"
+            onNavigate={onNavigate}
+            route={{ name: "create-team" }}
+          >
+            Create team
+          </DesktopActionLink>
         </div>
       </section>
 
@@ -225,7 +287,7 @@ export function DesktopTeamListPage({ onNavigate, teams }: DesktopTeamListPagePr
           <p>Create a team or redeem an invite to populate this list.</p>
         </section>
       ) : (
-        <section className="dashboard-grid">
+        <section className="page-grid">
           {teams.map((team) => (
             <button
               className="dashboard-card"
@@ -254,44 +316,34 @@ export function DesktopJoinTeamPage({
 }: DesktopJoinTeamPageProps) {
   return (
     <>
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">Join team</p>
-          <h3>Join a shared workspace with an invite.</h3>
-          <p>
-            Paste an invite code or a dashboard invite link. After a successful join, desktop takes
-            you straight into the dedicated team detail destination.
-          </p>
+      <section className="page-intro">
+        <div>
+          <p className="page-eyebrow">Join team</p>
+          <h2>Join a shared workspace with an invite.</h2>
         </div>
 
-        <div className="workspace-switcher__controls">
-          <div className="workspace-switcher__meta">
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "dashboard" }}
-            >
-              Dashboard
-            </DesktopActionLink>
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "team-list" }}
-            >
-              Joined teams
-            </DesktopActionLink>
-          </div>
+        <div className="page-intro__actions">
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "dashboard" }}
+          >
+            Dashboard
+          </DesktopActionLink>
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "team-list" }}
+          >
+            Teams
+          </DesktopActionLink>
         </div>
       </section>
 
       <section className="team-join-panel">
         <div className="team-join-panel__copy">
-          <p className="workspace-switcher__eyebrow">Invite code</p>
+          <p className="page-eyebrow">Invite code</p>
           <h3>Paste an invite to continue.</h3>
-          <p>
-            Invite acceptance stays in the signed-in flow so the team appears in dashboard and
-            joined teams as soon as membership is granted.
-          </p>
         </div>
 
         <form className="team-join-panel__controls" onSubmit={onSubmit}>
@@ -324,10 +376,7 @@ export function DesktopJoinTeamPage({
               <p>{feedback.message}</p>
             </div>
           ) : (
-            <p className="team-join-panel__hint">
-              Failed joins never reveal private team details. You will only see whether the invite
-              can be used for your account.
-            </p>
+            <p className="team-join-panel__hint">Failed joins never reveal private team details.</p>
           )}
         </form>
       </section>
@@ -344,38 +393,32 @@ export function DesktopCreateTeamPage({
 }: DesktopCreateTeamPageProps) {
   return (
     <>
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">Create team</p>
-          <h3>Start a shared workspace from its own page.</h3>
-          <p>
-            Successful creation sends you straight to the new team detail destination while keeping
-            dashboard and my workspace available from navigation.
-          </p>
+      <section className="page-intro">
+        <div>
+          <p className="page-eyebrow">Create team</p>
+          <h2>Start a shared workspace from its own page.</h2>
         </div>
 
-        <div className="workspace-switcher__controls">
-          <div className="workspace-switcher__meta">
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "dashboard" }}
-            >
-              Dashboard
-            </DesktopActionLink>
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "team-list" }}
-            >
-              Joined teams
-            </DesktopActionLink>
-          </div>
+        <div className="page-intro__actions">
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "dashboard" }}
+          >
+            Dashboard
+          </DesktopActionLink>
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "team-list" }}
+          >
+            Teams
+          </DesktopActionLink>
         </div>
       </section>
 
-      <form className="workspace-switcher__create" onSubmit={onSubmit}>
-        <label className="workspace-switcher__field">
+      <form className="standalone-form" onSubmit={onSubmit}>
+        <label className="composer__field">
           <span>Team name</span>
           <input
             disabled={!canManageTodos}
@@ -394,8 +437,8 @@ export function DesktopCreateTeamPage({
 }
 
 export function DesktopWorkspacePage({
-  activeDateViewLabel,
-  activeTaskFilterLabel,
+  section,
+  sectionRoutes,
   canManageTodos,
   composerPlaceholder,
   dateControls,
@@ -418,128 +461,114 @@ export function DesktopWorkspacePage({
   todoTitleError,
   workspace,
 }: DesktopWorkspacePageProps) {
+  const activeSection =
+    workspace?.kind === "team"
+      ? section === "date" || section === "invite"
+        ? section
+        : "tasks"
+      : section === "date"
+        ? "date"
+        : "tasks";
+
   return (
     <>
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">{introEyebrow}</p>
-          <h3>{introTitle}</h3>
+      <section className="page-intro">
+        <div>
+          <p className="page-eyebrow">{introEyebrow}</p>
+          <h2>{introTitle}</h2>
           <p>{introBody}</p>
         </div>
 
-        <div className="workspace-switcher__controls">
-          <div className="workspace-switcher__meta">
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={{ name: "dashboard" }}
-            >
-              Dashboard
-            </DesktopActionLink>
-            <DesktopActionLink
-              className="button-link button-link--muted"
-              onNavigate={onNavigate}
-              route={workspace?.kind === "team" ? { name: "team-list" } : { name: "create-team" }}
-            >
-              {workspace?.kind === "team" ? "Joined teams" : "Create team"}
-            </DesktopActionLink>
-            {workspace?.kind !== "team" ? (
-              <DesktopActionLink
-                className="button-link button-link--muted"
-                onNavigate={onNavigate}
-                route={{ name: "join-team" }}
-              >
-                Join team
-              </DesktopActionLink>
-            ) : null}
-          </div>
+        <div className="page-intro__actions">
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={{ name: "dashboard" }}
+          >
+            Dashboard
+          </DesktopActionLink>
+          <DesktopActionLink
+            className="button-link button-link--muted"
+            onNavigate={onNavigate}
+            route={workspace?.kind === "team" ? { name: "team-list" } : { name: "create-team" }}
+          >
+            {workspace?.kind === "team" ? "All teams" : "Create team"}
+          </DesktopActionLink>
         </div>
       </section>
 
-      {workspace ? (
-        <section className="workspace-switcher">
-          <div className="workspace-switcher__copy">
-            <p className="workspace-switcher__eyebrow">Workspace summary</p>
-            <h3>{workspace.name}</h3>
-            <p>
-              {workspace.kind === "team"
-                ? "Create, edit, complete, and delete actions apply to this shared team list."
-                : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-            </p>
-          </div>
+      <section className="workspace-subnav" aria-label="Workspace sections">
+        {sectionRoutes.map((entry) => (
+          <button
+            className={entry.isActive ? "is-active" : ""}
+            key={entry.label}
+            onClick={() => onNavigate(entry.route)}
+            type="button"
+          >
+            {entry.label}
+          </button>
+        ))}
+      </section>
 
-          <div className="workspace-switcher__controls">
-            <div className="workspace-switcher__meta">
-              <span className={`workspace-badge workspace-badge--${workspace.kind}`}>
-                {workspace.kind === "team" ? "Team workspace" : "Personal workspace"}
-              </span>
-              <span className="workspace-switcher__hint">
-                Date-based views only include tasks that already have a due date.
-              </span>
-            </div>
-          </div>
-        </section>
+      {activeSection === "tasks" ? (
+        <>
+          <form className="composer" onSubmit={onCreateSubmit}>
+            <label className="composer__field">
+              <span>New task</span>
+              <input
+                disabled={!canManageTodos}
+                onChange={(event) => onDraftTitleChange(event.currentTarget.value)}
+                placeholder={composerPlaceholder}
+                value={draftTitle}
+              />
+            </label>
+
+            <label className="composer__field">
+              <span>Due date</span>
+              <input
+                disabled={!canManageTodos}
+                onChange={(event) => onDraftDueDateChange(event.currentTarget.value)}
+                type="date"
+                value={draftDueDate}
+              />
+            </label>
+
+            <button disabled={!canManageTodos} type="submit">
+              Add task
+            </button>
+          </form>
+
+          {todoTitleError ? (
+            <p className="field-error field-error--spaced">{todoTitleError}</p>
+          ) : null}
+
+          {taskControls}
+          {editingForm}
+
+          {filteredTodoList ?? (
+            <section className="empty-state">
+              <p className="empty-state__eyebrow">
+                {workspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
+              </p>
+              <h3>{emptyStateCopy.title}</h3>
+              <p>{emptyStateCopy.body}</p>
+            </section>
+          )}
+
+          {emptyState}
+        </>
       ) : null}
 
-      {invitePanel}
+      {activeSection === "date" ? (
+        <>
+          {taskControls}
+          {dateControls}
+          {selectedDatePanel}
+          {emptyState}
+        </>
+      ) : null}
 
-      <form className="composer" onSubmit={onCreateSubmit}>
-        <label className="composer__field">
-          <span>New task</span>
-          <input
-            disabled={!canManageTodos}
-            onChange={(event) => onDraftTitleChange(event.currentTarget.value)}
-            placeholder={composerPlaceholder}
-            value={draftTitle}
-          />
-        </label>
-
-        <label className="composer__field">
-          <span>Due date</span>
-          <input
-            disabled={!canManageTodos}
-            onChange={(event) => onDraftDueDateChange(event.currentTarget.value)}
-            type="date"
-            value={draftDueDate}
-          />
-        </label>
-
-        <button disabled={!canManageTodos} type="submit">
-          Add task
-        </button>
-      </form>
-
-      {todoTitleError ? <p className="field-error field-error--spaced">{todoTitleError}</p> : null}
-
-      {taskControls}
-      {dateControls}
-      {selectedDatePanel}
-      {editingForm}
-
-      {filteredTodoList ?? (
-        <section className="empty-state">
-          <p className="empty-state__eyebrow">
-            {workspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
-          </p>
-          <h3>{emptyStateCopy.title}</h3>
-          <p>{emptyStateCopy.body}</p>
-        </section>
-      )}
-
-      {emptyState}
-
-      <section className="workspace-switcher">
-        <div className="workspace-switcher__copy">
-          <p className="workspace-switcher__eyebrow">Current filters</p>
-          <h3>
-            {activeTaskFilterLabel} and {activeDateViewLabel}
-          </h3>
-          <p>
-            This workspace keeps route state explicit and page-local filters in React state, just
-            like the current desktop change requires.
-          </p>
-        </div>
-      </section>
+      {activeSection === "invite" ? invitePanel : null}
     </>
   );
 }

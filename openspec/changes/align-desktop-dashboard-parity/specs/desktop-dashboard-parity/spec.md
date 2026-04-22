@@ -23,6 +23,25 @@ The system SHALL provide dedicated desktop destinations for `dashboard`, `my wor
 - **WHEN** an authenticated desktop user navigates to a joined team's detail destination
 - **THEN** the desktop shell focuses that team workspace and shows its team-specific tasks and actions
 
+### Requirement: Desktop signed-in page composition stays aligned with web
+
+The system SHALL keep the major signed-in desktop pages structurally aligned with the current web client, so parity is defined by shared page composition and flow ordering, not only by matching destination names.
+
+#### Scenario: Desktop user opens dashboard
+
+- **WHEN** an authenticated desktop user opens the desktop dashboard
+- **THEN** the page presents the same major content regions as web in desktop-appropriate form: dashboard intro, summary stats, destination entry cards, and joined-team quick links
+
+#### Scenario: Desktop user opens join or create team
+
+- **WHEN** an authenticated desktop user opens `join team` or `create team`
+- **THEN** the corresponding form is the primary focus of its own dedicated page, with supporting navigation back to dashboard and the broader signed-in team flow
+
+#### Scenario: Desktop user opens a workspace page
+
+- **WHEN** an authenticated desktop user opens `my workspace` or a joined `team detail`
+- **THEN** the page keeps a dedicated workspace-first layout with page intro, workspace-specific actions, task controls, and the task surface instead of falling back to a generic combined shell
+
 ### Requirement: Desktop dashboard structure preserves existing workspace actions
 
 The system SHALL preserve the current desktop invite, join, todo-management, due-date, task-filter, and date-view actions after the shell is reorganized around dashboard-first navigation.

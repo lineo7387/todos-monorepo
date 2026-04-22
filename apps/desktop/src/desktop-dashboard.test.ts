@@ -33,7 +33,7 @@ describe("deriveDesktopDashboard", () => {
       { label: "Active workspace", value: "Research" },
     ]);
     expect(result.actions.map((action) => action.route)).toEqual([
-      { name: "personal-workspace" },
+      { name: "personal-workspace", section: "tasks" },
       { name: "team-list" },
       { name: "join-team" },
       { name: "create-team" },
@@ -42,13 +42,13 @@ describe("deriveDesktopDashboard", () => {
       {
         id: "team-1",
         isActive: false,
-        route: { name: "team-detail", teamId: "team-1" },
+        route: { name: "team-detail", teamId: "team-1", section: "tasks" },
         title: "Design",
       },
       {
         id: "team-2",
         isActive: true,
-        route: { name: "team-detail", teamId: "team-2" },
+        route: { name: "team-detail", teamId: "team-2", section: "tasks" },
         title: "Research",
       },
     ]);

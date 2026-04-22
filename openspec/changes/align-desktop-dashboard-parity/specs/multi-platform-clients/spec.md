@@ -2,7 +2,7 @@
 
 ### Requirement: Client experiences preserve behavioral parity
 
-The system SHALL keep workspace selection, task creation, editing, completion, deletion, refresh behavior, and the major signed-in workspace destinations functionally consistent across supported clients, even if layouts differ by platform.
+The system SHALL keep workspace selection, task creation, editing, completion, deletion, refresh behavior, and the major signed-in workspace destinations functionally consistent across supported clients, even if layouts differ by platform. For desktop and web, this parity SHALL include equivalent signed-in destination structure and primary page composition, not only equivalent mutations behind different shells.
 
 #### Scenario: User switches between devices
 
@@ -12,4 +12,4 @@ The system SHALL keep workspace selection, task creation, editing, completion, d
 #### Scenario: Platform-specific layout variation
 
 - **WHEN** the interface adapts navigation or layout for web, mobile, or desktop conventions
-- **THEN** the adaptation does not remove any required core todo capability or the required major workspace destinations from that client
+- **THEN** the adaptation does not remove any required core todo capability or the required major workspace destinations from that client, and desktop/web still present those destinations through recognizably aligned page structures
