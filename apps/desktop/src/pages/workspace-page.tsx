@@ -1,4 +1,9 @@
 import type { FormEvent, ReactNode } from "react";
+import {
+  WorkspaceShellTaskComposer,
+  WorkspaceShellWorkspaceHeader,
+  type WorkspaceShellHeaderWorkspace,
+} from "workspace-shell";
 
 import {
   type DesktopRoute,
@@ -79,45 +84,21 @@ export function DesktopWorkspacePage({
 
   return (
     <>
-      <section className="page-intro">
-        <div>
-          <p className="page-eyebrow">{introEyebrow}</p>
-          <h2>{introTitle}</h2>
-          <p>{introBody}</p>
-        </div>
-
-        <div className="page-intro__actions">
+      <WorkspaceShellWorkspaceHeader
+        introBody={introBody}
+        introEyebrow={introEyebrow}
+        introTitle={introTitle}
+        renderNavigationAction={({ className, label, route }) => (
           <DesktopActionLink
-            className="button-link button-link--muted"
+            className={className}
             onNavigate={onNavigate}
-            route={{ name: "dashboard" }}
+            route={route as DesktopRoute}
           >
-            Dashboard
+            {label}
           </DesktopActionLink>
-          <DesktopActionLink
-            className="button-link button-link--muted"
-            onNavigate={onNavigate}
-            route={workspace?.kind === "team" ? { name: "team-list" } : { name: "create-team" }}
-          >
-            {workspace?.kind === "team" ? "All teams" : "Create team"}
-          </DesktopActionLink>
-        </div>
-      </section>
-
-      <section className="workspace-summary">
-        {workspace ? (
-          <div className="workspace-summary__meta">
-            <span className={`workspace-badge workspace-badge--${workspace.kind}`}>
-              {workspace.kind === "team" ? "Team workspace" : "Personal workspace"}
-            </span>
-            <span className="workspace-switcher__hint">
-              {workspace.kind === "team"
-                ? "Create, edit, complete, and delete actions apply to this shared team list."
-                : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-            </span>
-          </div>
-        ) : null}
-      </section>
+        )}
+        workspace={workspace as WorkspaceShellHeaderWorkspace | null}
+      />
 
       <section className="workspace-subnav" aria-label="Workspace sections">
         {sectionRoutes.map((entry) => (
@@ -134,35 +115,16 @@ export function DesktopWorkspacePage({
 
       {activeSection === "tasks" ? (
         <>
-          <form className="composer" onSubmit={onCreateSubmit}>
-            <label className="composer__field">
-              <span>New task</span>
-              <input
-                disabled={!canManageTodos}
-                onChange={(event) => onDraftTitleChange(event.currentTarget.value)}
-                placeholder={composerPlaceholder}
-                value={draftTitle}
-              />
-            </label>
-
-            <label className="composer__field composer__field--date">
-              <span>Due date</span>
-              <input
-                disabled={!canManageTodos}
-                onChange={(event) => onDraftDueDateChange(event.currentTarget.value)}
-                type="date"
-                value={draftDueDate}
-              />
-            </label>
-
-            <button disabled={!canManageTodos} type="submit">
-              Add task
-            </button>
-          </form>
-
-          {todoTitleError ? (
-            <p className="field-error field-error--spaced">{todoTitleError}</p>
-          ) : null}
+          <WorkspaceShellTaskComposer
+            canManageTodos={canManageTodos}
+            composerPlaceholder={composerPlaceholder}
+            draftDueDate={draftDueDate}
+            draftTitle={draftTitle}
+            onCreateSubmit={onCreateSubmit}
+            onDraftDueDateChange={onDraftDueDateChange}
+            onDraftTitleChange={onDraftTitleChange}
+            todoTitleError={todoTitleError}
+          />
 
           {taskControls}
           {editingForm}

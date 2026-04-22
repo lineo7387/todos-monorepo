@@ -1,4 +1,9 @@
 import type { FormEvent } from "react";
+import {
+  WorkspaceShellTaskComposer,
+  WorkspaceShellWorkspaceHeader,
+  type WorkspaceShellHeaderWorkspace,
+} from "workspace-shell";
 
 import type { WebsiteRoute } from "../routing/routes.ts";
 import { RouteLink } from "./route-link.tsx";
@@ -82,16 +87,6 @@ function formatDueDate(value: string): string {
     day: "numeric",
     year: "numeric",
   }).format(new Date(`${value}T00:00:00.000Z`));
-}
-
-function getWorkspaceBadgeLabel(workspace: WebsiteWorkspace): string {
-  return workspace.kind === "team" ? "Team workspace" : "Personal workspace";
-}
-
-function getWorkspaceDescription(workspace: WebsiteWorkspace): string {
-  return workspace.kind === "team"
-    ? "Shared tasks stay in sync for every member of this team workspace."
-    : "These tasks belong to your personal workspace and follow your account across clients.";
 }
 
 function getComposerPlaceholder(workspace: WebsiteWorkspace | null): string {
@@ -221,52 +216,27 @@ export function WorkspacePage({
   onDeleteTodo,
   onToggleComplete,
 }: WorkspacePageProps) {
+  const introEyebrow = workspace?.kind === "team" ? "Team detail" : "My workspace";
+  const introTitle = workspace?.name ?? "Workspace unavailable";
+  const introBody = workspace
+    ? workspace.kind === "team"
+      ? "Shared tasks stay in sync for every member of this team workspace."
+      : "These tasks belong to your personal workspace and follow your account across clients."
+    : "We could not resolve the workspace from the current route.";
+
   return (
     <>
-      <section className="page-intro">
-        <div>
-          <p className="page-eyebrow">
-            {workspace?.kind === "team" ? "Team detail" : "My workspace"}
-          </p>
-          <h2>{workspace?.name ?? "Workspace unavailable"}</h2>
-          <p>
-            {workspace
-              ? getWorkspaceDescription(workspace)
-              : "We could not resolve the workspace from the current route."}
-          </p>
-        </div>
-        <div className="page-intro__actions">
-          <RouteLink
-            className="button-link button-link--muted"
-            onNavigate={onNavigate}
-            route={{ name: "dashboard" }}
-          >
-            Dashboard
+      <WorkspaceShellWorkspaceHeader
+        introBody={introBody}
+        introEyebrow={introEyebrow}
+        introTitle={introTitle}
+        renderNavigationAction={({ className, label, route }) => (
+          <RouteLink className={className} onNavigate={onNavigate} route={route as WebsiteRoute}>
+            {label}
           </RouteLink>
-          <RouteLink
-            className="button-link button-link--muted"
-            onNavigate={onNavigate}
-            route={workspace?.kind === "team" ? { name: "team-list" } : { name: "create-team" }}
-          >
-            {workspace?.kind === "team" ? "All teams" : "Create team"}
-          </RouteLink>
-        </div>
-      </section>
-
-      <section className="workspace-summary">
-        {workspace ? (
-          <div className="workspace-summary__meta">
-            <span className={`workspace-badge workspace-badge--${workspace.kind}`}>
-              {getWorkspaceBadgeLabel(workspace)}
-            </span>
-            <span className="workspace-switcher__hint">
-              {workspace.kind === "team"
-                ? "Create, edit, complete, and delete actions apply to this shared team list."
-                : "Create, edit, complete, and delete actions stay scoped to your personal list."}
-            </span>
-          </div>
-        ) : null}
-      </section>
+        )}
+        workspace={workspace as WorkspaceShellHeaderWorkspace | null}
+      />
 
       {workspace?.kind === "team" ? (
         <section className="invite-panel">
@@ -321,33 +291,16 @@ export function WorkspacePage({
         </section>
       ) : null}
 
-      <form className="composer" onSubmit={onCreateSubmit}>
-        <label className="composer__field">
-          <span>New task</span>
-          <input
-            disabled={!canManageTodos}
-            onChange={(event) => onDraftTitleChange(event.currentTarget.value)}
-            placeholder={getComposerPlaceholder(workspace)}
-            value={draftTitle}
-          />
-        </label>
-
-        <label className="composer__field composer__field--date">
-          <span>Due date</span>
-          <input
-            disabled={!canManageTodos}
-            onChange={(event) => onDraftDueDateChange(event.currentTarget.value)}
-            type="date"
-            value={draftDueDate}
-          />
-        </label>
-
-        <button disabled={!canManageTodos} type="submit">
-          Add task
-        </button>
-      </form>
-
-      {todoTitleError ? <p className="field-error field-error--spaced">{todoTitleError}</p> : null}
+      <WorkspaceShellTaskComposer
+        canManageTodos={canManageTodos}
+        composerPlaceholder={getComposerPlaceholder(workspace)}
+        draftDueDate={draftDueDate}
+        draftTitle={draftTitle}
+        onCreateSubmit={onCreateSubmit}
+        onDraftDueDateChange={onDraftDueDateChange}
+        onDraftTitleChange={onDraftTitleChange}
+        todoTitleError={todoTitleError}
+      />
 
       {editingTodoId ? (
         <form className="editor" onSubmit={onSaveEdit}>

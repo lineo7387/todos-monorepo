@@ -152,6 +152,17 @@ export {
 } from "./team-list-page.tsx";
 
 export {
+  WorkspaceShellTaskComposer,
+  type WorkspaceShellTaskComposerProps,
+} from "./task-composer.tsx";
+
+export {
+  WorkspaceShellWorkspaceHeader,
+  type WorkspaceShellHeaderWorkspace,
+  type WorkspaceShellWorkspaceHeaderProps,
+} from "./workspace-header.tsx";
+
+export {
   WorkspaceTopNavigation,
   type RenderWorkspaceTopNavigationActionInput,
   type WorkspaceTopNavigationItem,
