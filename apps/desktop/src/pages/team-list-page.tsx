@@ -1,4 +1,8 @@
-import { WorkspaceShellTeamListPage, type WorkspaceShellTeamListPageTeam } from "workspace-shell";
+import {
+  WorkspaceShellRouteCard,
+  WorkspaceShellTeamListPage,
+  type WorkspaceShellTeamListPageTeam,
+} from "workspace-shell";
 
 import type { DesktopRoute } from "../routing/routes.ts";
 import { DesktopActionLink } from "./action-link.tsx";
@@ -32,9 +36,11 @@ export function DesktopTeamListPage({ onNavigate, teams }: DesktopTeamListPagePr
           onClick={() => onNavigate(team.route as DesktopRoute)}
           type="button"
         >
-          <p className="page-eyebrow">Team detail</p>
-          <h3>{team.name}</h3>
-          <p>Open the dedicated desktop page for this shared workspace.</p>
+          <WorkspaceShellRouteCard
+            body="Open the dedicated desktop page for this shared workspace."
+            eyebrow="Team detail"
+            title={team.name}
+          />
         </button>
       )}
       teams={teams as WorkspaceShellTeamListPageTeam[]}

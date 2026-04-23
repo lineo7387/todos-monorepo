@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
 import {
   WorkspaceShellTaskComposer,
+  WorkspaceShellTodoEditor,
+  WorkspaceShellTodoRow,
   WorkspaceShellWorkspaceHeader,
   type WorkspaceShellHeaderWorkspace,
 } from "workspace-shell";
@@ -62,15 +64,6 @@ export interface WorkspacePageProps {
   onToggleComplete: (todo: WebsiteTodoItem) => void;
 }
 
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -117,59 +110,6 @@ function getDateViewLabel(view: WorkspaceDateView): string {
     case "all":
       return "All tasks";
   }
-}
-
-function TodoRow({
-  todo,
-  disabled,
-  onDelete,
-  onStartEdit,
-  onToggleComplete,
-}: {
-  todo: WebsiteTodoItem;
-  disabled: boolean;
-  onDelete: (todoId: string) => void;
-  onStartEdit: (todo: WebsiteTodoItem) => void;
-  onToggleComplete: (todo: WebsiteTodoItem) => void;
-}) {
-  const isOptimistic = todo.id.startsWith("optimistic-");
-
-  return (
-    <li className={`todo-card ${todo.completed ? "is-complete" : ""}`}>
-      <label className="todo-toggle">
-        <input
-          checked={todo.completed}
-          disabled={disabled}
-          onChange={() => onToggleComplete(todo)}
-          type="checkbox"
-        />
-        <span className="todo-toggle__control" aria-hidden="true" />
-      </label>
-
-      <div className="todo-card__body">
-        <div className="todo-card__meta">
-          <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
-          <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
-          {todo.dueDate ? <span>Due {formatDueDate(todo.dueDate)}</span> : null}
-        </div>
-        <p>{todo.title}</p>
-      </div>
-
-      <div className="todo-card__actions">
-        <button disabled={disabled} onClick={() => onStartEdit(todo)} type="button">
-          Edit
-        </button>
-        <button
-          className="danger"
-          disabled={disabled}
-          onClick={() => onDelete(todo.id)}
-          type="button"
-        >
-          Delete
-        </button>
-      </div>
-    </li>
-  );
 }
 
 export function WorkspacePage({
@@ -303,35 +243,15 @@ export function WorkspacePage({
       />
 
       {editingTodoId ? (
-        <form className="editor" onSubmit={onSaveEdit}>
-          <label className="composer__field">
-            <span>Edit task</span>
-            <input
-              disabled={!canManageTodos}
-              onChange={(event) => onEditTitleChange(event.currentTarget.value)}
-              value={editingTitle}
-            />
-          </label>
-
-          <label className="composer__field">
-            <span>Due date</span>
-            <input
-              disabled={!canManageTodos}
-              onChange={(event) => onEditDueDateChange(event.currentTarget.value)}
-              type="date"
-              value={editingDueDate}
-            />
-          </label>
-
-          <div className="editor__actions">
-            <button disabled={!canManageTodos} type="submit">
-              Save
-            </button>
-            <button disabled={!canManageTodos} onClick={onCancelEditing} type="button">
-              Cancel
-            </button>
-          </div>
-        </form>
+        <WorkspaceShellTodoEditor
+          canManageTodos={canManageTodos}
+          editingDueDate={editingDueDate}
+          editingTitle={editingTitle}
+          onCancelEditing={onCancelEditing}
+          onEditDueDateChange={onEditDueDateChange}
+          onEditTitleChange={onEditTitleChange}
+          onSaveEdit={onSaveEdit}
+        />
       ) : null}
 
       <section className="task-filter-panel" aria-label="Task filters">
@@ -448,7 +368,7 @@ export function WorkspacePage({
       ) : (
         <ul className="todo-list">
           {todos.map((todo) => (
-            <TodoRow
+            <WorkspaceShellTodoRow
               disabled={!canManageTodos}
               key={todo.id}
               onDelete={onDeleteTodo}

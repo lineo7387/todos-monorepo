@@ -1,5 +1,6 @@
 import {
   WorkspaceShellDashboardPage,
+  WorkspaceShellRouteCard,
   type WorkspaceShellDashboardAction,
   type WorkspaceShellDashboardStat,
 } from "workspace-shell";
@@ -32,9 +33,11 @@ export function DesktopDashboardPage({ actions, onNavigate, stats }: DesktopDash
           onClick={() => onNavigate(action.route as DesktopRoute)}
           type="button"
         >
-          <p className="page-eyebrow">{action.eyebrow}</p>
-          <h3>{action.title}</h3>
-          <p>{action.body}</p>
+          <WorkspaceShellRouteCard
+            body={action.body}
+            eyebrow={action.eyebrow}
+            title={action.title}
+          />
         </button>
       )}
       stats={stats as WorkspaceShellDashboardStat[]}

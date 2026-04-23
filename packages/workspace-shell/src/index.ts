@@ -178,10 +178,20 @@ export {
   type WorkspaceShellTeamListPageTeam,
 } from "./team-list-page.tsx";
 
+export { WorkspaceShellRouteCard, type WorkspaceShellRouteCardProps } from "./route-card.tsx";
+
+export { WorkspaceShellTodoEditor, type WorkspaceShellTodoEditorProps } from "./todo-editor.tsx";
+
 export {
   WorkspaceShellTaskComposer,
   type WorkspaceShellTaskComposerProps,
 } from "./task-composer.tsx";
+
+export {
+  WorkspaceShellTodoRow,
+  type WorkspaceShellTodoRowProps,
+  type WorkspaceShellTodoRowTodo,
+} from "./todo-row.tsx";
 
 export {
   WorkspaceShellWorkspaceHeader,

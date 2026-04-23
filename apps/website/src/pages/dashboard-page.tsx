@@ -1,5 +1,6 @@
 import {
   WorkspaceShellDashboardPage,
+  WorkspaceShellRouteCard,
   type WorkspaceShellDashboardAction,
   type WorkspaceShellDashboardStat,
 } from "workspace-shell";
@@ -67,9 +68,11 @@ export function DashboardPage({ onNavigate, personalWorkspace, teamCount }: Dash
           onNavigate={onNavigate}
           route={action.route as WebsiteRoute}
         >
-          <p className="page-eyebrow">{action.eyebrow}</p>
-          <h3>{action.title}</h3>
-          <p>{action.body}</p>
+          <WorkspaceShellRouteCard
+            body={action.body}
+            eyebrow={action.eyebrow}
+            title={action.title}
+          />
         </RouteLink>
       )}
       stats={stats}

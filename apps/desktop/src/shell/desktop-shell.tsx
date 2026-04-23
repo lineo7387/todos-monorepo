@@ -12,7 +12,11 @@ import {
   createSupabaseTodoRepository,
   createTodoSupabaseClient,
 } from "todo-data";
-import { workspaceShellPageIds } from "workspace-shell";
+import {
+  WorkspaceShellTodoEditor,
+  WorkspaceShellTodoRow,
+  workspaceShellPageIds,
+} from "workspace-shell";
 
 import { getDesktopSupabaseEnv } from "../config/env.ts";
 import {
@@ -104,15 +108,6 @@ function createDesktopBootstrap(): DesktopBootstrap {
       envError: toErrorMessage(error),
     };
   }
-}
-
-function formatUpdatedAt(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function formatDueDate(value: string): string {
@@ -216,59 +211,6 @@ function getEmptyStateCopy(workspace: DesktopWorkspace | null) {
     title: "Create your first synced todo.",
     body: "New personal tasks will appear here and persist for this account across app restarts.",
   };
-}
-
-function TodoRow({
-  todo,
-  disabled,
-  onDelete,
-  onStartEdit,
-  onToggleComplete,
-}: {
-  todo: DesktopTodoItem;
-  disabled: boolean;
-  onDelete: (todoId: string) => void;
-  onStartEdit: (todo: DesktopTodoItem) => void;
-  onToggleComplete: (todo: DesktopTodoItem) => void;
-}) {
-  const isOptimistic = todo.id.startsWith("optimistic-");
-
-  return (
-    <li className={`todo-card ${todo.completed ? "is-complete" : ""}`}>
-      <label className="todo-toggle">
-        <input
-          checked={todo.completed}
-          disabled={disabled}
-          onChange={() => onToggleComplete(todo)}
-          type="checkbox"
-        />
-        <span className="todo-toggle__control" aria-hidden="true" />
-      </label>
-
-      <div className="todo-card__body">
-        <div className="todo-card__meta">
-          <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
-          <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
-          {todo.dueDate ? <span>Due {formatDueDate(todo.dueDate)}</span> : null}
-        </div>
-        <p>{todo.title}</p>
-      </div>
-
-      <div className="todo-card__actions">
-        <button disabled={disabled} onClick={() => onStartEdit(todo)} type="button">
-          Edit
-        </button>
-        <button
-          className="danger"
-          disabled={disabled}
-          onClick={() => onDelete(todo.id)}
-          type="button"
-        >
-          Delete
-        </button>
-      </div>
-    </li>
-  );
 }
 
 export function DesktopAppShell() {
@@ -583,7 +525,7 @@ export function DesktopAppShell() {
     return (
       <ul className="todo-list">
         {filteredTodos.map((todo) => (
-          <TodoRow
+          <WorkspaceShellTodoRow
             disabled={!viewModel.canManageTodos}
             key={todo.id}
             onDelete={(todoId) => void controller!.deleteTodo(todoId).catch(() => {})}
@@ -746,35 +688,15 @@ export function DesktopAppShell() {
     }
 
     return (
-      <form className="editor" onSubmit={(event) => void handleSaveEdit(event)}>
-        <label className="composer__field">
-          <span>Edit task</span>
-          <input
-            disabled={!viewModel.canManageTodos}
-            onChange={(event) => setEditingTitle(event.currentTarget.value)}
-            value={editingTitle}
-          />
-        </label>
-
-        <label className="composer__field">
-          <span>Due date</span>
-          <input
-            disabled={!viewModel.canManageTodos}
-            onChange={(event) => setEditingDueDate(event.currentTarget.value)}
-            type="date"
-            value={editingDueDate}
-          />
-        </label>
-
-        <div className="editor__actions">
-          <button disabled={!viewModel.canManageTodos} type="submit">
-            Save
-          </button>
-          <button disabled={!viewModel.canManageTodos} onClick={cancelEditing} type="button">
-            Cancel
-          </button>
-        </div>
-      </form>
+      <WorkspaceShellTodoEditor
+        canManageTodos={viewModel.canManageTodos}
+        editingDueDate={editingDueDate}
+        editingTitle={editingTitle}
+        onCancelEditing={cancelEditing}
+        onEditDueDateChange={setEditingDueDate}
+        onEditTitleChange={setEditingTitle}
+        onSaveEdit={(event) => void handleSaveEdit(event)}
+      />
     );
   }
 

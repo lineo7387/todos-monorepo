@@ -1,4 +1,8 @@
-import { WorkspaceShellTeamListPage, type WorkspaceShellTeamListPageTeam } from "workspace-shell";
+import {
+  WorkspaceShellRouteCard,
+  WorkspaceShellTeamListPage,
+  type WorkspaceShellTeamListPageTeam,
+} from "workspace-shell";
 
 import type { WebsiteRoute } from "../routing/routes.ts";
 import { RouteLink } from "./route-link.tsx";
@@ -25,9 +29,11 @@ export function TeamListPage({ onNavigate, teams }: TeamListPageProps) {
           onNavigate={onNavigate}
           route={team.route as WebsiteRoute}
         >
-          <p className="page-eyebrow">Team detail</p>
-          <h3>{team.name}</h3>
-          <p>Open the dedicated page for this shared workspace.</p>
+          <WorkspaceShellRouteCard
+            body="Open the dedicated page for this shared workspace."
+            eyebrow="Team detail"
+            title={team.name}
+          />
         </RouteLink>
       )}
       teams={
