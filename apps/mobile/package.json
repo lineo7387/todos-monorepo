@@ -16,7 +16,8 @@
     "react": "catalog:",
     "react-native": "catalog:",
     "todo-app": "workspace:*",
-    "todo-data": "workspace:*"
+    "todo-data": "workspace:*",
+    "workspace-shell": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

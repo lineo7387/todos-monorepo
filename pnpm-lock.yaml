@@ -118,6 +118,9 @@ importers:
       todo-data:
         specifier: workspace:*
         version: link:../../packages/todo-data
+      workspace-shell:
+        specifier: workspace:*
+        version: link:../../packages/workspace-shell
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
