@@ -12,6 +12,7 @@ import {
   createSupabaseTodoRepository,
   createTodoSupabaseClient,
 } from "todo-data";
+import { workspaceShellPageIds } from "workspace-shell";
 
 import { getDesktopSupabaseEnv } from "../config/env.ts";
 import {
@@ -1087,140 +1088,154 @@ export function DesktopAppShell() {
             {routeNotice ? <p className="info-banner">{routeNotice}</p> : null}
 
             <DesktopSignedInRoutes
-              createTeamPage={
-                <DesktopCreateTeamPage
-                  canManageTodos={viewModel.canManageTodos}
-                  draftTeamName={draftTeamName}
-                  onDraftTeamNameChange={setDraftTeamName}
-                  onNavigate={navigate}
-                  onSubmit={(event) => void handleCreateTeamSubmit(event)}
-                />
-              }
-              dashboardPage={
-                <DesktopDashboardPage
-                  actions={dashboard.actions}
-                  onNavigate={navigate}
-                  stats={dashboard.stats}
-                />
-              }
-              joinTeamPage={
-                <DesktopJoinTeamPage
-                  feedback={joinFeedback}
-                  inputValue={joinInviteInput}
-                  isSubmitting={pendingUi}
-                  onDismissFeedback={() => setJoinFeedback(null)}
-                  onInputChange={setJoinInviteInput}
-                  onNavigate={navigate}
-                  onSubmit={(event) => void handleJoinTeamSubmit(event)}
-                />
-              }
-              personalWorkspacePage={
-                <DesktopWorkspacePage
-                  section={personalWorkspaceSection}
-                  sectionRoutes={[
-                    {
-                      isActive: personalWorkspaceSection === "tasks",
-                      label: "Tasks",
-                      route: { name: "personal-workspace", section: "tasks" },
-                    },
-                    {
-                      isActive: personalWorkspaceSection === "date",
-                      label: "Date",
-                      route: { name: "personal-workspace", section: "date" },
-                    },
-                  ]}
-                  canManageTodos={viewModel.canManageTodos}
-                  composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
-                  dateControls={renderDateControls()}
-                  draftDueDate={draftDueDate}
-                  draftTitle={draftTitle}
-                  editingForm={renderEditingForm()}
-                  emptyState={renderWorkspaceEmptyState()}
-                  emptyStateCopy={emptyStateCopy}
-                  filteredTodoList={renderTodoList()}
-                  introBody={
-                    pageWorkspace
-                      ? getWorkspaceDescription(pageWorkspace)
-                      : "No personal or team workspace is available for this account yet."
-                  }
-                  introEyebrow={getDesktopPageEyebrow(route)}
-                  introTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
-                  invitePanel={renderTeamInvitePanel()}
-                  onCreateSubmit={(event) => void handleCreateSubmit(event)}
-                  onDraftDueDateChange={setDraftDueDate}
-                  onDraftTitleChange={setDraftTitle}
-                  onNavigate={navigate}
-                  selectedDatePanel={renderSelectedDatePanel()}
-                  taskControls={renderTaskControls()}
-                  todoTitleError={viewModel.todoTitleError}
-                  workspace={pageWorkspace}
-                />
-              }
-              teamListPage={
-                <DesktopTeamListPage
-                  onNavigate={navigate}
-                  teams={teamWorkspaces.map((workspace) => ({
-                    id: workspace.id,
-                    name: workspace.name,
-                    route: {
-                      name: "team-detail",
-                      teamId: workspace.teamId ?? workspace.id,
-                      section: "tasks",
-                    },
-                  }))}
-                />
-              }
-              teamWorkspacePage={
-                <DesktopWorkspacePage
-                  section={teamDetailSection}
-                  sectionRoutes={
-                    route.name === "team-detail" && pageWorkspace?.kind === "team"
-                      ? [
-                          {
-                            isActive: teamDetailSection === "tasks",
-                            label: "Tasks",
-                            route: { name: "team-detail", teamId: route.teamId, section: "tasks" },
-                          },
-                          {
-                            isActive: teamDetailSection === "date",
-                            label: "Date",
-                            route: { name: "team-detail", teamId: route.teamId, section: "date" },
-                          },
-                          {
-                            isActive: teamDetailSection === "invite",
-                            label: "Invite",
-                            route: { name: "team-detail", teamId: route.teamId, section: "invite" },
-                          },
-                        ]
-                      : []
-                  }
-                  canManageTodos={viewModel.canManageTodos}
-                  composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
-                  dateControls={renderDateControls()}
-                  draftDueDate={draftDueDate}
-                  draftTitle={draftTitle}
-                  editingForm={renderEditingForm()}
-                  emptyState={renderWorkspaceEmptyState()}
-                  emptyStateCopy={emptyStateCopy}
-                  filteredTodoList={renderTodoList()}
-                  introBody={
-                    pageWorkspace
-                      ? getWorkspaceDescription(pageWorkspace)
-                      : "No personal or team workspace is available for this account yet."
-                  }
-                  introEyebrow={getDesktopPageEyebrow(route)}
-                  introTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
-                  invitePanel={renderTeamInvitePanel()}
-                  onCreateSubmit={(event) => void handleCreateSubmit(event)}
-                  onDraftDueDateChange={setDraftDueDate}
-                  onDraftTitleChange={setDraftTitle}
-                  onNavigate={navigate}
-                  selectedDatePanel={renderSelectedDatePanel()}
-                  taskControls={renderTaskControls()}
-                  todoTitleError={viewModel.todoTitleError}
-                  workspace={pageWorkspace}
-                />
-              }
+              pages={{
+                [workspaceShellPageIds.createTeam]: (
+                  <DesktopCreateTeamPage
+                    canManageTodos={viewModel.canManageTodos}
+                    draftTeamName={draftTeamName}
+                    onDraftTeamNameChange={setDraftTeamName}
+                    onNavigate={navigate}
+                    onSubmit={(event) => void handleCreateTeamSubmit(event)}
+                  />
+                ),
+                [workspaceShellPageIds.dashboard]: (
+                  <DesktopDashboardPage
+                    actions={dashboard.actions}
+                    onNavigate={navigate}
+                    stats={dashboard.stats}
+                  />
+                ),
+                [workspaceShellPageIds.joinTeam]: (
+                  <DesktopJoinTeamPage
+                    feedback={joinFeedback}
+                    inputValue={joinInviteInput}
+                    isSubmitting={pendingUi}
+                    onDismissFeedback={() => setJoinFeedback(null)}
+                    onInputChange={setJoinInviteInput}
+                    onNavigate={navigate}
+                    onSubmit={(event) => void handleJoinTeamSubmit(event)}
+                  />
+                ),
+                [workspaceShellPageIds.personalWorkspace]: (
+                  <DesktopWorkspacePage
+                    section={personalWorkspaceSection}
+                    sectionRoutes={[
+                      {
+                        isActive: personalWorkspaceSection === "tasks",
+                        label: "Tasks",
+                        route: { name: "personal-workspace", section: "tasks" },
+                      },
+                      {
+                        isActive: personalWorkspaceSection === "date",
+                        label: "Date",
+                        route: { name: "personal-workspace", section: "date" },
+                      },
+                    ]}
+                    canManageTodos={viewModel.canManageTodos}
+                    composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
+                    dateControls={renderDateControls()}
+                    draftDueDate={draftDueDate}
+                    draftTitle={draftTitle}
+                    editingForm={renderEditingForm()}
+                    emptyState={renderWorkspaceEmptyState()}
+                    emptyStateCopy={emptyStateCopy}
+                    filteredTodoList={renderTodoList()}
+                    introBody={
+                      pageWorkspace
+                        ? getWorkspaceDescription(pageWorkspace)
+                        : "No personal or team workspace is available for this account yet."
+                    }
+                    introEyebrow={getDesktopPageEyebrow(route)}
+                    introTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
+                    invitePanel={renderTeamInvitePanel()}
+                    onCreateSubmit={(event) => void handleCreateSubmit(event)}
+                    onDraftDueDateChange={setDraftDueDate}
+                    onDraftTitleChange={setDraftTitle}
+                    onNavigate={navigate}
+                    selectedDatePanel={renderSelectedDatePanel()}
+                    taskControls={renderTaskControls()}
+                    todoTitleError={viewModel.todoTitleError}
+                    workspace={pageWorkspace}
+                  />
+                ),
+                [workspaceShellPageIds.teamDetail]: (
+                  <DesktopWorkspacePage
+                    section={teamDetailSection}
+                    sectionRoutes={
+                      route.name === "team-detail" && pageWorkspace?.kind === "team"
+                        ? [
+                            {
+                              isActive: teamDetailSection === "tasks",
+                              label: "Tasks",
+                              route: {
+                                name: "team-detail",
+                                teamId: route.teamId,
+                                section: "tasks",
+                              },
+                            },
+                            {
+                              isActive: teamDetailSection === "date",
+                              label: "Date",
+                              route: {
+                                name: "team-detail",
+                                teamId: route.teamId,
+                                section: "date",
+                              },
+                            },
+                            {
+                              isActive: teamDetailSection === "invite",
+                              label: "Invite",
+                              route: {
+                                name: "team-detail",
+                                teamId: route.teamId,
+                                section: "invite",
+                              },
+                            },
+                          ]
+                        : []
+                    }
+                    canManageTodos={viewModel.canManageTodos}
+                    composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
+                    dateControls={renderDateControls()}
+                    draftDueDate={draftDueDate}
+                    draftTitle={draftTitle}
+                    editingForm={renderEditingForm()}
+                    emptyState={renderWorkspaceEmptyState()}
+                    emptyStateCopy={emptyStateCopy}
+                    filteredTodoList={renderTodoList()}
+                    introBody={
+                      pageWorkspace
+                        ? getWorkspaceDescription(pageWorkspace)
+                        : "No personal or team workspace is available for this account yet."
+                    }
+                    introEyebrow={getDesktopPageEyebrow(route)}
+                    introTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
+                    invitePanel={renderTeamInvitePanel()}
+                    onCreateSubmit={(event) => void handleCreateSubmit(event)}
+                    onDraftDueDateChange={setDraftDueDate}
+                    onDraftTitleChange={setDraftTitle}
+                    onNavigate={navigate}
+                    selectedDatePanel={renderSelectedDatePanel()}
+                    taskControls={renderTaskControls()}
+                    todoTitleError={viewModel.todoTitleError}
+                    workspace={pageWorkspace}
+                  />
+                ),
+                [workspaceShellPageIds.teamList]: (
+                  <DesktopTeamListPage
+                    onNavigate={navigate}
+                    teams={teamWorkspaces.map((workspace) => ({
+                      id: workspace.id,
+                      name: workspace.name,
+                      route: {
+                        name: "team-detail",
+                        teamId: workspace.teamId ?? workspace.id,
+                        section: "tasks",
+                      },
+                    }))}
+                  />
+                ),
+              }}
             />
           </div>
         ) : null}

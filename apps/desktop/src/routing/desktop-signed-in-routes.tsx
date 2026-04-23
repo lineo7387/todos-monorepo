@@ -1,36 +1,27 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
+import type { WorkspaceShellPageId } from "workspace-shell";
+
+import { getDesktopSignedInRoutePatterns } from "./desktop-route-adapter.ts";
+
+export type DesktopSignedInPageElements = Record<WorkspaceShellPageId, ReactNode>;
 
 export interface DesktopSignedInRoutesProps {
-  createTeamPage: ReactNode;
-  dashboardPage: ReactNode;
-  joinTeamPage: ReactNode;
-  personalWorkspacePage: ReactNode;
-  teamListPage: ReactNode;
-  teamWorkspacePage: ReactNode;
+  pages: DesktopSignedInPageElements;
 }
 
-export function DesktopSignedInRoutes({
-  createTeamPage,
-  dashboardPage,
-  joinTeamPage,
-  personalWorkspacePage,
-  teamListPage,
-  teamWorkspacePage,
-}: DesktopSignedInRoutesProps) {
+const desktopSignedInRoutePatterns = getDesktopSignedInRoutePatterns();
+
+export function DesktopSignedInRoutes({ pages }: DesktopSignedInRoutesProps) {
   return (
     <Routes>
-      <Route element={dashboardPage} path="/" />
-      <Route element={personalWorkspacePage} path="/my-workspace" />
-      <Route element={personalWorkspacePage} path="/my-workspace/tasks" />
-      <Route element={personalWorkspacePage} path="/my-workspace/date" />
-      <Route element={teamListPage} path="/teams" />
-      <Route element={teamWorkspacePage} path="/teams/:teamId" />
-      <Route element={teamWorkspacePage} path="/teams/:teamId/tasks" />
-      <Route element={teamWorkspacePage} path="/teams/:teamId/date" />
-      <Route element={teamWorkspacePage} path="/teams/:teamId/invite" />
-      <Route element={joinTeamPage} path="/teams/join" />
-      <Route element={createTeamPage} path="/teams/new" />
+      {desktopSignedInRoutePatterns.map((routePattern) => (
+        <Route
+          element={pages[routePattern.pageId]}
+          key={routePattern.key}
+          path={routePattern.path}
+        />
+      ))}
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );

@@ -6,6 +6,8 @@ import {
   resolveWorkspaceRouteEffect,
 } from "workspace-shell";
 
+import { getWebsiteSignedInRoutePatterns } from "../routing/website-route-adapter.ts";
+
 describe("resolveWorkspaceRouteEffect", () => {
   test("selects the personal workspace when the route targets my workspace", () => {
     expect(
@@ -56,6 +58,19 @@ describe("resolveWorkspaceRouteEffect", () => {
       routeNotice: "That team is not available in your current memberships.",
       selectWorkspaceId: null,
     });
+  });
+});
+
+describe("website route adapter", () => {
+  test("uses the shared signed-in route contract without desktop section aliases", () => {
+    expect(getWebsiteSignedInRoutePatterns()).toEqual([
+      { key: "dashboard", pageId: "dashboard", path: "/" },
+      { key: "personal-workspace", pageId: "personal-workspace", path: "/my-workspace" },
+      { key: "team-list", pageId: "team-list", path: "/teams" },
+      { key: "team-detail", pageId: "team-detail", path: "/teams/:teamId" },
+      { key: "join-team", pageId: "join-team", path: "/teams/join" },
+      { key: "create-team", pageId: "create-team", path: "/teams/new" },
+    ]);
   });
 });
 

@@ -8,9 +8,14 @@ import { JoinTeamPage } from "../pages/join-team-page.tsx";
 import { TeamListPage } from "../pages/team-list-page.tsx";
 import { WorkspacePage } from "../pages/workspace-page.tsx";
 import type { WebsiteWorkspace, WorkspaceDateView, WorkspaceTaskFilter } from "../pages/types.ts";
+import { getWebsiteSignedInRoutePatterns } from "./website-route-adapter.ts";
 import type { WebsiteRoute } from "./routes.ts";
 
 type WebsiteTodoItem = TodoAppState["todos"][number];
+
+const websiteSignedInRoutePaths = Object.fromEntries(
+  getWebsiteSignedInRoutePatterns().map((routePattern) => [routePattern.key, routePattern.path]),
+) as Record<ReturnType<typeof getWebsiteSignedInRoutePatterns>[number]["key"], string>;
 
 export interface WebsiteSignedInRoutesProps {
   canManageTodos: boolean;
@@ -137,7 +142,7 @@ export function WebsiteSignedInRoutes({
             teamCount={teamWorkspaces.length}
           />
         }
-        path="/"
+        path={websiteSignedInRoutePaths.dashboard}
       />
       <Route
         element={
@@ -194,11 +199,11 @@ export function WebsiteSignedInRoutes({
             workspace={personalWorkspace}
           />
         }
-        path="/my-workspace"
+        path={websiteSignedInRoutePaths["personal-workspace"]}
       />
       <Route
         element={<TeamListPage onNavigate={onNavigate} teams={teamWorkspaces} />}
-        path="/teams"
+        path={websiteSignedInRoutePaths["team-list"]}
       />
       <Route
         element={
@@ -255,7 +260,7 @@ export function WebsiteSignedInRoutes({
             workspace={routedTeamWorkspace}
           />
         }
-        path="/teams/:teamId"
+        path={websiteSignedInRoutePaths["team-detail"]}
       />
       <Route
         element={
@@ -270,7 +275,7 @@ export function WebsiteSignedInRoutes({
             source={source}
           />
         }
-        path="/teams/join"
+        path={websiteSignedInRoutePaths["join-team"]}
       />
       <Route
         element={
@@ -282,7 +287,7 @@ export function WebsiteSignedInRoutes({
             onSubmit={onCreateTeamSubmit}
           />
         }
-        path="/teams/new"
+        path={websiteSignedInRoutePaths["create-team"]}
       />
       <Route element={<Navigate replace to={route.name === "dashboard" ? "/" : "/"} />} path="*" />
     </Routes>

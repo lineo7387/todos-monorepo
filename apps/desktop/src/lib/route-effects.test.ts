@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { resolveDesktopRouteEffect } from "./route-effects.ts";
+import { getDesktopSignedInRoutePatterns } from "../routing/desktop-route-adapter.ts";
 import {
   getDefaultDesktopRoute,
   getDesktopRouteHref,
@@ -80,6 +81,30 @@ describe("desktop routes", () => {
     expect(getDesktopRouteHref({ name: "team-detail", teamId: "team-1", section: "date" })).toBe(
       "/teams/team-1/date",
     );
+  });
+
+  test("uses the shared signed-in route contract with desktop section routes enabled", () => {
+    expect(getDesktopSignedInRoutePatterns()).toEqual([
+      { key: "dashboard", pageId: "dashboard", path: "/" },
+      { key: "personal-workspace", pageId: "personal-workspace", path: "/my-workspace" },
+      { key: "team-list", pageId: "team-list", path: "/teams" },
+      { key: "team-detail", pageId: "team-detail", path: "/teams/:teamId" },
+      { key: "join-team", pageId: "join-team", path: "/teams/join" },
+      { key: "create-team", pageId: "create-team", path: "/teams/new" },
+      {
+        key: "personal-workspace-tasks",
+        pageId: "personal-workspace",
+        path: "/my-workspace/tasks",
+      },
+      {
+        key: "personal-workspace-date",
+        pageId: "personal-workspace",
+        path: "/my-workspace/date",
+      },
+      { key: "team-detail-tasks", pageId: "team-detail", path: "/teams/:teamId/tasks" },
+      { key: "team-detail-date", pageId: "team-detail", path: "/teams/:teamId/date" },
+      { key: "team-detail-invite", pageId: "team-detail", path: "/teams/:teamId/invite" },
+    ]);
   });
 });
 

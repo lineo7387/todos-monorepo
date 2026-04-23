@@ -7,6 +7,7 @@ import {
   getDefaultWorkspaceRoute,
   getJoinInviteFailureFeedback,
   getJoinTeamSuccessOutcome,
+  getWorkspaceShellSignedInRoutePatterns,
   getWorkspaceShellResource,
   getWorkspaceShellRouteHref,
   getTeamSection,
@@ -139,6 +140,34 @@ describe("workspace-shell route contract", () => {
       teamId: "team-1",
       section: "invite",
     });
+  });
+
+  test("exposes shared signed-in route patterns for client adapters", () => {
+    expect(getWorkspaceShellSignedInRoutePatterns()).toEqual([
+      { key: "dashboard", pageId: "dashboard", path: "/" },
+      { key: "personal-workspace", pageId: "personal-workspace", path: "/my-workspace" },
+      { key: "team-list", pageId: "team-list", path: "/teams" },
+      { key: "team-detail", pageId: "team-detail", path: "/teams/:teamId" },
+      { key: "join-team", pageId: "join-team", path: "/teams/join" },
+      { key: "create-team", pageId: "create-team", path: "/teams/new" },
+    ]);
+    expect(
+      getWorkspaceShellSignedInRoutePatterns({ includeWorkspaceSections: true }).map(
+        (routePattern) => routePattern.key,
+      ),
+    ).toEqual([
+      "dashboard",
+      "personal-workspace",
+      "team-list",
+      "team-detail",
+      "join-team",
+      "create-team",
+      "personal-workspace-tasks",
+      "personal-workspace-date",
+      "team-detail-tasks",
+      "team-detail-date",
+      "team-detail-invite",
+    ]);
   });
 
   test("defines shared English and Chinese resource trees for core workspace terminology", () => {

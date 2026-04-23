@@ -37,6 +37,25 @@ export type WorkspaceShellRoute =
   | { name: "join-team" }
   | { name: "create-team" };
 
+export type WorkspaceShellSignedInRouteKey =
+  | "dashboard"
+  | "personal-workspace"
+  | "personal-workspace-tasks"
+  | "personal-workspace-date"
+  | "team-list"
+  | "team-detail"
+  | "team-detail-tasks"
+  | "team-detail-date"
+  | "team-detail-invite"
+  | "join-team"
+  | "create-team";
+
+export interface WorkspaceShellSignedInRoutePattern {
+  key: WorkspaceShellSignedInRouteKey;
+  pageId: WorkspaceShellPageId;
+  path: string;
+}
+
 export interface WorkspaceShellRouteHrefOptions {
   includeDefaultWorkspaceSection?: boolean;
 }
@@ -257,6 +276,79 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
     },
   },
 } as const;
+
+const baseSignedInRoutePatterns: WorkspaceShellSignedInRoutePattern[] = [
+  {
+    key: "dashboard",
+    pageId: workspaceShellPageIds.dashboard,
+    path: "/",
+  },
+  {
+    key: "personal-workspace",
+    pageId: workspaceShellPageIds.personalWorkspace,
+    path: "/my-workspace",
+  },
+  {
+    key: "team-list",
+    pageId: workspaceShellPageIds.teamList,
+    path: "/teams",
+  },
+  {
+    key: "team-detail",
+    pageId: workspaceShellPageIds.teamDetail,
+    path: "/teams/:teamId",
+  },
+  {
+    key: "join-team",
+    pageId: workspaceShellPageIds.joinTeam,
+    path: "/teams/join",
+  },
+  {
+    key: "create-team",
+    pageId: workspaceShellPageIds.createTeam,
+    path: "/teams/new",
+  },
+];
+
+const workspaceSectionRoutePatterns: WorkspaceShellSignedInRoutePattern[] = [
+  {
+    key: "personal-workspace-tasks",
+    pageId: workspaceShellPageIds.personalWorkspace,
+    path: "/my-workspace/tasks",
+  },
+  {
+    key: "personal-workspace-date",
+    pageId: workspaceShellPageIds.personalWorkspace,
+    path: "/my-workspace/date",
+  },
+  {
+    key: "team-detail-tasks",
+    pageId: workspaceShellPageIds.teamDetail,
+    path: "/teams/:teamId/tasks",
+  },
+  {
+    key: "team-detail-date",
+    pageId: workspaceShellPageIds.teamDetail,
+    path: "/teams/:teamId/date",
+  },
+  {
+    key: "team-detail-invite",
+    pageId: workspaceShellPageIds.teamDetail,
+    path: "/teams/:teamId/invite",
+  },
+];
+
+export interface GetWorkspaceShellSignedInRoutePatternsOptions {
+  includeWorkspaceSections?: boolean;
+}
+
+export function getWorkspaceShellSignedInRoutePatterns(
+  options: GetWorkspaceShellSignedInRoutePatternsOptions = {},
+): WorkspaceShellSignedInRoutePattern[] {
+  return options.includeWorkspaceSections
+    ? [...baseSignedInRoutePatterns, ...workspaceSectionRoutePatterns]
+    : [...baseSignedInRoutePatterns];
+}
 
 export interface ResolveWorkspaceRouteEffectInput {
   activeWorkspaceId: string | null;
