@@ -8,11 +8,13 @@ import {
   getJoinInviteFailureFeedback,
   getJoinTeamSuccessOutcome,
   getWorkspaceShellResource,
+  getWorkspaceShellRouteHref,
   getTeamSection,
   getWorkspaceRouteTitle,
   getWorkspaceSection,
   isWorkspaceRouteActive,
   normalizeWorkspaceShellLocale,
+  parseWorkspaceShellRoute,
   resolveWorkspaceRouteEffect,
   workspaceShellLocales,
   workspaceShellPageIds,
@@ -91,6 +93,52 @@ describe("workspace-shell route contract", () => {
     expect(getTeamSection({ name: "team-detail", teamId: "team-1", section: "invite" })).toBe(
       "invite",
     );
+  });
+
+  test("serializes shared route hrefs for web and desktop adapters", () => {
+    expect(getWorkspaceShellRouteHref({ name: "dashboard" })).toBe("/");
+    expect(getWorkspaceShellRouteHref({ name: "personal-workspace" })).toBe("/my-workspace");
+    expect(
+      getWorkspaceShellRouteHref(
+        { name: "personal-workspace", section: "tasks" },
+        { includeDefaultWorkspaceSection: true },
+      ),
+    ).toBe("/my-workspace/tasks");
+    expect(getWorkspaceShellRouteHref({ name: "team-detail", teamId: "team-1" })).toBe(
+      "/teams/team-1",
+    );
+    expect(
+      getWorkspaceShellRouteHref(
+        { name: "team-detail", teamId: "team-1", section: "invite" },
+        { includeDefaultWorkspaceSection: true },
+      ),
+    ).toBe("/teams/team-1/invite");
+    expect(getWorkspaceShellRouteHref({ name: "join-team" })).toBe("/teams/join");
+    expect(getWorkspaceShellRouteHref({ name: "create-team" })).toBe("/teams/new");
+  });
+
+  test("parses shared route paths for web and desktop adapters", () => {
+    expect(parseWorkspaceShellRoute("/")).toEqual({ name: "dashboard" });
+    expect(parseWorkspaceShellRoute("/my-workspace")).toEqual({ name: "personal-workspace" });
+    expect(parseWorkspaceShellRoute("/teams/team-1")).toEqual({
+      name: "team-detail",
+      teamId: "team-1",
+    });
+    expect(parseWorkspaceShellRoute("/teams/join")).toEqual({ name: "join-team" });
+    expect(parseWorkspaceShellRoute("/teams/new")).toEqual({ name: "create-team" });
+    expect(
+      parseWorkspaceShellRoute("/my-workspace/date", { includeWorkspaceSections: true }),
+    ).toEqual({
+      name: "personal-workspace",
+      section: "date",
+    });
+    expect(
+      parseWorkspaceShellRoute("/teams/team-1/invite", { includeWorkspaceSections: true }),
+    ).toEqual({
+      name: "team-detail",
+      teamId: "team-1",
+      section: "invite",
+    });
   });
 
   test("defines shared English and Chinese resource trees for core workspace terminology", () => {

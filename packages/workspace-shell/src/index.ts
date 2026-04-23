@@ -37,6 +37,14 @@ export type WorkspaceShellRoute =
   | { name: "join-team" }
   | { name: "create-team" };
 
+export interface WorkspaceShellRouteHrefOptions {
+  includeDefaultWorkspaceSection?: boolean;
+}
+
+export interface ParseWorkspaceShellRouteOptions {
+  includeWorkspaceSections?: boolean;
+}
+
 export const workspaceShellTranslationNamespaces = {
   root: "workspace-shell",
   pages: "workspace-shell.pages",
@@ -332,6 +340,90 @@ export function getWorkspaceShellResource(locale?: string | null): WorkspaceShel
 
 export function getDefaultWorkspaceRoute(): WorkspaceShellRoute {
   return { name: "dashboard" };
+}
+
+export function getWorkspaceShellRouteHref(
+  route: WorkspaceShellRoute,
+  options?: WorkspaceShellRouteHrefOptions,
+): string {
+  switch (route.name) {
+    case "dashboard":
+      return "/";
+    case "personal-workspace":
+      if (route.section === "date") {
+        return "/my-workspace/date";
+      }
+
+      return options?.includeDefaultWorkspaceSection ? "/my-workspace/tasks" : "/my-workspace";
+    case "team-list":
+      return "/teams";
+    case "team-detail":
+      if (route.section === "date") {
+        return `/teams/${route.teamId}/date`;
+      }
+
+      if (route.section === "invite") {
+        return `/teams/${route.teamId}/invite`;
+      }
+
+      return options?.includeDefaultWorkspaceSection
+        ? `/teams/${route.teamId}/tasks`
+        : `/teams/${route.teamId}`;
+    case "join-team":
+      return "/teams/join";
+    case "create-team":
+      return "/teams/new";
+  }
+}
+
+export function parseWorkspaceShellRoute(
+  pathname: string,
+  options?: ParseWorkspaceShellRouteOptions,
+): WorkspaceShellRoute {
+  if (
+    pathname === "/my-workspace" ||
+    (options?.includeWorkspaceSections && pathname === "/my-workspace/tasks")
+  ) {
+    return options?.includeWorkspaceSections
+      ? { name: "personal-workspace", section: "tasks" }
+      : { name: "personal-workspace" };
+  }
+
+  if (options?.includeWorkspaceSections && pathname === "/my-workspace/date") {
+    return { name: "personal-workspace", section: "date" };
+  }
+
+  if (pathname === "/teams") {
+    return { name: "team-list" };
+  }
+
+  if (pathname === "/teams/new") {
+    return { name: "create-team" };
+  }
+
+  if (pathname === "/teams/join") {
+    return { name: "join-team" };
+  }
+
+  if (pathname.startsWith("/teams/")) {
+    const [teamId, section] = pathname.slice("/teams/".length).split("/").filter(Boolean);
+
+    if (teamId) {
+      if (options?.includeWorkspaceSections && section === "date") {
+        return { name: "team-detail", teamId, section: "date" };
+      }
+
+      if (options?.includeWorkspaceSections && section === "invite") {
+        return { name: "team-detail", teamId, section: "invite" };
+      }
+
+      return options?.includeWorkspaceSections
+        ? { name: "team-detail", teamId, section: "tasks" }
+        : { name: "team-detail", teamId };
+    }
+  }
+
+  return getDefaultWorkspaceRoute();
 }
 
 export function isWorkspaceRouteActive(
