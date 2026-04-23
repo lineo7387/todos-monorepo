@@ -8,7 +8,7 @@
 
 - [x] 2.1 Refactor `apps/website` to use `react-router`-driven shared route definitions and split the current large `App.tsx` into host adapter, routes, pages, and shared shell composition
 - [x] 2.2 Refactor `apps/desktop` to consume the same shared signed-in page modules and route contract through a desktop router adapter instead of file-local route switching
-- [ ] 2.3 Move shared web/desktop signed-in pages and supporting components into the shared workspace-shell module while keeping browser- and Electron-specific bootstrap concerns isolated
+- [x] 2.3 Move shared web/desktop signed-in pages and supporting components into the shared workspace-shell module while keeping browser- and Electron-specific bootstrap concerns isolated
 
 ## 3. Mobile parity implementation
 

@@ -206,6 +206,23 @@ export {
   type WorkspaceTopNavigationProps,
   type WorkspaceTopNavigationTeam,
 } from "./top-level-navigation.tsx";
+export {
+  WorkspaceShellSignedInCreateTeamPage,
+  WorkspaceShellSignedInDashboardPage,
+  WorkspaceShellSignedInJoinTeamPage,
+  WorkspaceShellSignedInTeamListPage,
+  WorkspaceShellSignedInWorkspacePage,
+  type RenderWorkspaceShellRouteActionInput,
+  type WorkspaceShellSectionRoute,
+  type WorkspaceShellSelectedDateTodo,
+  type WorkspaceShellSignedInCreateTeamPageProps,
+  type WorkspaceShellSignedInDashboardPageProps,
+  type WorkspaceShellSignedInJoinTeamPageProps,
+  type WorkspaceShellSignedInTeam,
+  type WorkspaceShellSignedInTeamListPageProps,
+  type WorkspaceShellSignedInWorkspacePageProps,
+  type WorkspaceShellTeamInvitePanelState,
+} from "./signed-in-pages.tsx";
 
 export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShellResources> = {
   en: {

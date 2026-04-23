@@ -1,12 +1,17 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { FormEvent } from "react";
 import type { TodoAppState } from "todo-app";
+import {
+  getWorkspaceRouteTitle,
+  WorkspaceShellSignedInCreateTeamPage,
+  WorkspaceShellSignedInDashboardPage,
+  WorkspaceShellSignedInJoinTeamPage,
+  WorkspaceShellSignedInTeamListPage,
+  WorkspaceShellSignedInWorkspacePage,
+  type WorkspaceShellJoinTeamFeedback,
+} from "workspace-shell";
 
-import { CreateTeamPage } from "../pages/create-team-page.tsx";
-import { DashboardPage } from "../pages/dashboard-page.tsx";
-import { JoinTeamPage } from "../pages/join-team-page.tsx";
-import { TeamListPage } from "../pages/team-list-page.tsx";
-import { WorkspacePage } from "../pages/workspace-page.tsx";
+import { RouteLink } from "../pages/route-link.tsx";
 import type { WebsiteWorkspace, WorkspaceDateView, WorkspaceTaskFilter } from "../pages/types.ts";
 import { getWebsiteSignedInRoutePatterns } from "./website-route-adapter.ts";
 import type { WebsiteRoute } from "./routes.ts";
@@ -16,6 +21,14 @@ type WebsiteTodoItem = TodoAppState["todos"][number];
 const websiteSignedInRoutePaths = Object.fromEntries(
   getWebsiteSignedInRoutePatterns().map((routePattern) => [routePattern.key, routePattern.path]),
 ) as Record<ReturnType<typeof getWebsiteSignedInRoutePatterns>[number]["key"], string>;
+
+function getComposerPlaceholder(workspace: WebsiteWorkspace | null): string {
+  if (!workspace) {
+    return "Select a workspace before adding a task";
+  }
+
+  return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+}
 
 export interface WebsiteSignedInRoutesProps {
   canManageTodos: boolean;
@@ -33,15 +46,18 @@ export interface WebsiteSignedInRoutesProps {
   };
   filteredTodos: WebsiteTodoItem[];
   hasAnyTodos: boolean;
+  isSubmitting: boolean;
   joinFeedback: {
     kind: "error" | "notice";
     message: string;
   } | null;
   joinInviteCode: string;
   onCancelEditing: () => void;
-  onCreateSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onCopyTeamInviteCode: () => void;
+  onCopyTeamInviteLink: () => void;
+  onCreateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCreateTeamInvite: () => void;
-  onCreateTeamSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onCreateTeamSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDateViewChange: (view: WorkspaceDateView) => void;
   onDeleteTodo: (todoId: string) => void;
   onDismissJoinFeedback: () => void;
@@ -51,18 +67,16 @@ export interface WebsiteSignedInRoutesProps {
   onEditDueDateChange: (value: string) => void;
   onEditTitleChange: (value: string) => void;
   onInviteCodeChange: (value: string) => void;
-  onJoinTeamSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onJoinTeamSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onNavigate: (route: WebsiteRoute, options?: { replace?: boolean }) => void;
-  onCopyTeamInviteCode: () => void;
-  onCopyTeamInviteLink: () => void;
   onSaveEdit: (event: FormEvent<HTMLFormElement>) => void;
   onSelectedDateChange: (value: string) => void;
   onStartEdit: (todo: WebsiteTodoItem) => void;
   onTaskFilterChange: (filter: WorkspaceTaskFilter) => void;
   onToggleComplete: (todo: WebsiteTodoItem) => void;
   personalWorkspace: WebsiteWorkspace | null;
-  routedTeamWorkspace: WebsiteWorkspace | null;
   route: WebsiteRoute;
+  routedTeamWorkspace: WebsiteWorkspace | null;
   selectedDate: string;
   selectedDateLabel: string;
   selectedDateTodos: WebsiteTodoItem[];
@@ -75,7 +89,6 @@ export interface WebsiteSignedInRoutesProps {
   teamInviteMessage: string | null;
   teamWorkspaces: WebsiteWorkspace[];
   todoTitleError: string | null;
-  isSubmitting: boolean;
 }
 
 export function WebsiteSignedInRoutes({
@@ -91,9 +104,12 @@ export function WebsiteSignedInRoutes({
   emptyStateCopy,
   filteredTodos,
   hasAnyTodos,
+  isSubmitting,
   joinFeedback,
   joinInviteCode,
   onCancelEditing,
+  onCopyTeamInviteCode,
+  onCopyTeamInviteLink,
   onCreateSubmit,
   onCreateTeamInvite,
   onCreateTeamSubmit,
@@ -108,16 +124,14 @@ export function WebsiteSignedInRoutes({
   onInviteCodeChange,
   onJoinTeamSubmit,
   onNavigate,
-  onCopyTeamInviteCode,
-  onCopyTeamInviteLink,
   onSaveEdit,
   onSelectedDateChange,
   onStartEdit,
   onTaskFilterChange,
   onToggleComplete,
   personalWorkspace,
-  routedTeamWorkspace,
   route,
+  routedTeamWorkspace,
   selectedDate,
   selectedDateLabel,
   selectedDateTodos,
@@ -130,15 +144,29 @@ export function WebsiteSignedInRoutes({
   teamInviteMessage,
   teamWorkspaces,
   todoTitleError,
-  isSubmitting,
 }: WebsiteSignedInRoutesProps) {
   return (
     <Routes>
       <Route
         element={
-          <DashboardPage
-            onNavigate={onNavigate}
-            personalWorkspace={personalWorkspace}
+          <WorkspaceShellSignedInDashboardPage
+            personalWorkspaceName={personalWorkspace?.name ?? null}
+            renderRouteAction={({ children, className, key, route }) => (
+              <RouteLink
+                className={className}
+                key={key}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {children}
+              </RouteLink>
+            )}
+            routes={{
+              createTeam: { name: "create-team" } satisfies WebsiteRoute,
+              joinTeam: { name: "join-team" } satisfies WebsiteRoute,
+              personalWorkspace: { name: "personal-workspace" } satisfies WebsiteRoute,
+              teamList: { name: "team-list" } satisfies WebsiteRoute,
+            }}
             teamCount={teamWorkspaces.length}
           />
         }
@@ -146,18 +174,9 @@ export function WebsiteSignedInRoutes({
       />
       <Route
         element={
-          <WorkspacePage
-            activeDateViewLabel={
-              dateView === "due-today"
-                ? "due today"
-                : dateView === "upcoming"
-                  ? "upcoming"
-                  : "all tasks"
-            }
-            activeTaskFilterLabel={
-              taskFilter === "active" ? "Active" : taskFilter === "completed" ? "Completed" : "All"
-            }
+          <WorkspaceShellSignedInWorkspacePage
             canManageTodos={canManageTodos}
+            composerPlaceholder={getComposerPlaceholder(personalWorkspace)}
             dateView={dateView}
             dateViewCounts={dateViewCounts}
             draftDueDate={draftDueDate}
@@ -167,33 +186,36 @@ export function WebsiteSignedInRoutes({
             editingTodoId={editingTodoId}
             emptyStateCopy={emptyStateCopy}
             hasAnyTodos={hasAnyTodos}
+            layout="combined"
             onCancelEditing={onCancelEditing}
-            onCopyTeamInviteCode={onCopyTeamInviteCode}
-            onCopyTeamInviteLink={onCopyTeamInviteLink}
             onCreateSubmit={onCreateSubmit}
-            onCreateTeamInvite={() => {}}
             onDateViewChange={onDateViewChange}
             onDeleteTodo={onDeleteTodo}
             onDraftDueDateChange={onDraftDueDateChange}
             onDraftTitleChange={onDraftTitleChange}
             onEditDueDateChange={onEditDueDateChange}
             onEditTitleChange={onEditTitleChange}
-            onNavigate={onNavigate}
             onSaveEdit={onSaveEdit}
             onSelectedDateChange={onSelectedDateChange}
             onStartEdit={onStartEdit}
             onTaskFilterChange={onTaskFilterChange}
             onToggleComplete={onToggleComplete}
+            renderNavigationAction={({ className, label, route }) => (
+              <RouteLink
+                className={className}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {label}
+              </RouteLink>
+            )}
+            routeTitle={getWorkspaceRouteTitle({ name: "personal-workspace" })}
+            section="tasks"
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
-            selectedDateTaskCount={selectedDateTodos.length}
             selectedDateTodos={selectedDateTodos}
             taskCounts={taskCounts}
             taskFilter={taskFilter}
-            teamInviteCode=""
-            teamInviteExpiresAt={null}
-            teamInviteLink={null}
-            teamInviteMessage={null}
             todoTitleError={todoTitleError}
             todos={filteredTodos}
             workspace={personalWorkspace}
@@ -202,23 +224,41 @@ export function WebsiteSignedInRoutes({
         path={websiteSignedInRoutePaths["personal-workspace"]}
       />
       <Route
-        element={<TeamListPage onNavigate={onNavigate} teams={teamWorkspaces} />}
+        element={
+          <WorkspaceShellSignedInTeamListPage
+            renderNavigationAction={({ className, label, route }) => (
+              <RouteLink
+                className={className}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {label}
+              </RouteLink>
+            )}
+            renderRouteAction={({ children, className, key, route }) => (
+              <RouteLink
+                className={className}
+                key={key}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {children}
+              </RouteLink>
+            )}
+            teams={teamWorkspaces.map((workspace) => ({
+              id: workspace.id,
+              name: workspace.name,
+              route: { name: "team-detail", teamId: workspace.teamId ?? workspace.id },
+            }))}
+          />
+        }
         path={websiteSignedInRoutePaths["team-list"]}
       />
       <Route
         element={
-          <WorkspacePage
-            activeDateViewLabel={
-              dateView === "due-today"
-                ? "due today"
-                : dateView === "upcoming"
-                  ? "upcoming"
-                  : "all tasks"
-            }
-            activeTaskFilterLabel={
-              taskFilter === "active" ? "Active" : taskFilter === "completed" ? "Completed" : "All"
-            }
+          <WorkspaceShellSignedInWorkspacePage
             canManageTodos={canManageTodos}
+            composerPlaceholder={getComposerPlaceholder(routedTeamWorkspace)}
             dateView={dateView}
             dateViewCounts={dateViewCounts}
             draftDueDate={draftDueDate}
@@ -228,33 +268,45 @@ export function WebsiteSignedInRoutes({
             editingTodoId={editingTodoId}
             emptyStateCopy={emptyStateCopy}
             hasAnyTodos={hasAnyTodos}
+            layout="combined"
             onCancelEditing={onCancelEditing}
-            onCopyTeamInviteCode={onCopyTeamInviteCode}
-            onCopyTeamInviteLink={onCopyTeamInviteLink}
             onCreateSubmit={onCreateSubmit}
-            onCreateTeamInvite={onCreateTeamInvite}
             onDateViewChange={onDateViewChange}
             onDeleteTodo={onDeleteTodo}
             onDraftDueDateChange={onDraftDueDateChange}
             onDraftTitleChange={onDraftTitleChange}
             onEditDueDateChange={onEditDueDateChange}
             onEditTitleChange={onEditTitleChange}
-            onNavigate={onNavigate}
             onSaveEdit={onSaveEdit}
             onSelectedDateChange={onSelectedDateChange}
             onStartEdit={onStartEdit}
             onTaskFilterChange={onTaskFilterChange}
             onToggleComplete={onToggleComplete}
+            renderNavigationAction={({ className, label, route }) => (
+              <RouteLink
+                className={className}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {label}
+              </RouteLink>
+            )}
+            routeTitle={getWorkspaceRouteTitle(route, routedTeamWorkspace?.name)}
+            section="tasks"
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
-            selectedDateTaskCount={selectedDateTodos.length}
             selectedDateTodos={selectedDateTodos}
             taskCounts={taskCounts}
             taskFilter={taskFilter}
-            teamInviteCode={teamInviteCode}
-            teamInviteExpiresAt={teamInviteExpiresAt}
-            teamInviteLink={teamInviteLink}
-            teamInviteMessage={teamInviteMessage}
+            teamInvite={{
+              code: teamInviteCode,
+              expiresAt: teamInviteExpiresAt,
+              link: teamInviteLink,
+              message: teamInviteMessage,
+              onCopyCode: onCopyTeamInviteCode,
+              onCopyLink: onCopyTeamInviteLink,
+              onCreateInvite: onCreateTeamInvite,
+            }}
             todoTitleError={todoTitleError}
             todos={filteredTodos}
             workspace={routedTeamWorkspace}
@@ -264,27 +316,54 @@ export function WebsiteSignedInRoutes({
       />
       <Route
         element={
-          <JoinTeamPage
-            feedback={joinFeedback}
-            inviteCode={joinInviteCode}
+          <WorkspaceShellSignedInJoinTeamPage
+            feedback={joinFeedback as WorkspaceShellJoinTeamFeedback | null}
+            inputValue={joinInviteCode}
             isSubmitting={isSubmitting}
             onDismissFeedback={onDismissJoinFeedback}
-            onInviteCodeChange={onInviteCodeChange}
-            onNavigate={onNavigate}
+            onInputChange={onInviteCodeChange}
             onSubmit={onJoinTeamSubmit}
+            renderNavigationAction={({ className, label, route }) => (
+              <RouteLink
+                className={className}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {label}
+              </RouteLink>
+            )}
+            renderRouteAction={({ children, className, key, route }) => (
+              <RouteLink
+                className={className}
+                key={key}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {children}
+              </RouteLink>
+            )}
             source={source}
+            teamListRoute={{ name: "team-list" } satisfies WebsiteRoute}
           />
         }
         path={websiteSignedInRoutePaths["join-team"]}
       />
       <Route
         element={
-          <CreateTeamPage
+          <WorkspaceShellSignedInCreateTeamPage
             canManageTodos={canManageTodos}
             draftTeamName={draftTeamName}
             onDraftTeamNameChange={onDraftTeamNameChange}
-            onNavigate={onNavigate}
             onSubmit={onCreateTeamSubmit}
+            renderNavigationAction={({ className, label, route }) => (
+              <RouteLink
+                className={className}
+                onNavigate={onNavigate}
+                route={route as WebsiteRoute}
+              >
+                {label}
+              </RouteLink>
+            )}
           />
         }
         path={websiteSignedInRoutePaths["create-team"]}
