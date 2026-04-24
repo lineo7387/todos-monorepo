@@ -146,11 +146,61 @@ export interface WorkspaceShellResources {
     heading: string;
     subtitle: string;
     joinedTeams: string;
+    emptyTeams: string;
+    joinedTeamsBody: string;
+    body: string;
+    teamLabel: string;
+    primaryItems: {
+      dashboard: string;
+      personalWorkspace: string;
+      teamList: string;
+      joinTeam: string;
+      createTeam: string;
+    };
   };
   feedback: {
     unavailableTeam: string;
     joinTeamSuccess: string;
     createInviteReady: string;
+  };
+  pages: {
+    dashboard: {
+      heroBody: string;
+      actions: {
+        personalWorkspaceBody: string;
+        personalWorkspaceFallbackTitle: string;
+        teamListBody: string;
+        teamListTitle: string;
+        joinTeamBody: string;
+        joinTeamTitle: string;
+        createTeamBody: string;
+        createTeamTitle: string;
+      };
+      stats: {
+        personalWorkspaceFallback: string;
+        nextFocusLabel: string;
+        nextFocusValue: string;
+      };
+    };
+    teamList: {
+      body: string;
+      emptyBody: string;
+      emptyEyebrow: string;
+      emptyTitle: string;
+      teamCardBody: string;
+    };
+    joinTeam: {
+      heroBody: string;
+      inviteBody: string;
+      inviteEyebrowLink: string;
+      inviteEyebrowManual: string;
+      inviteHeadingLink: string;
+      inviteHeadingManual: string;
+      nextBody: string;
+      nextEyebrow: string;
+      nextTitle: string;
+      browseTeams: string;
+    };
   };
 }
 
@@ -255,6 +305,18 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       heading: "Workspace navigation",
       subtitle: "Move between dashboard, my workspace, and team actions.",
       joinedTeams: "Joined teams",
+      emptyTeams: "No joined teams yet. Create one or accept an invite.",
+      joinedTeamsBody:
+        "Jump directly into a dedicated team detail page from anywhere in the signed-in flow.",
+      body: "The app keeps the workspace model route-driven, with joined teams available as dedicated destinations.",
+      teamLabel: "Team",
+      primaryItems: {
+        dashboard: "Overview and quick entry points",
+        personalWorkspace: "Personal tasks",
+        teamList: "Joined teams",
+        joinTeam: "Redeem an invite",
+        createTeam: "Start a shared workspace",
+      },
     },
     feedback: {
       unavailableTeam: "That team is not available in your current memberships.",
@@ -262,6 +324,51 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         "You can now work in {{teamName}}. My workspace stays available from {{navigationLabel}}.",
       createInviteReady:
         "Invite ready to share. Teammates can paste this code into the {{joinSurface}}.",
+    },
+    pages: {
+      dashboard: {
+        heroBody:
+          "Signed-in workspace navigation now lands on a dedicated dashboard so each destination can keep its own stable page boundary.",
+        actions: {
+          personalWorkspaceBody: "Open your personal task list as its own focused page.",
+          personalWorkspaceFallbackTitle: "Personal workspace",
+          teamListBody: "Browse current memberships and jump to a dedicated team detail page.",
+          teamListTitle: "{{count}} joined team{{plural}}",
+          joinTeamBody:
+            "Use a dedicated join surface instead of layering flows into one workspace screen.",
+          joinTeamTitle: "Accept an invite",
+          createTeamBody:
+            "Create a team from its own page and continue into the resulting detail view.",
+          createTeamTitle: "Start a shared workspace",
+        },
+        stats: {
+          personalWorkspaceFallback: "Ready",
+          nextFocusLabel: "Next focus",
+          nextFocusValue: "Join and create flows",
+        },
+      },
+      teamList: {
+        body: "Open each shared workspace from its own dedicated destination.",
+        emptyBody: "Create a team or redeem an invite to populate this list.",
+        emptyEyebrow: "No joined teams yet",
+        emptyTitle: "Your teams will appear here.",
+        teamCardBody: "Open the dedicated page for this shared workspace.",
+      },
+      joinTeam: {
+        heroBody:
+          "Open a shared invite link or paste the invite code directly. After a successful join, the shared shell takes you straight into the team detail page.",
+        inviteBody:
+          "Invite acceptance stays inside the signed-in flow so the shared workspace appears in dashboard and team navigation as soon as membership is granted.",
+        inviteEyebrowLink: "Invite link opened",
+        inviteEyebrowManual: "Invite code",
+        inviteHeadingLink: "We prefilled the invite for you.",
+        inviteHeadingManual: "Paste an invite to continue.",
+        nextBody:
+          "The join action redeems the invite, refreshes your joined teams, and lands you in the target workspace while keeping your personal workspace available in navigation.",
+        nextEyebrow: "What happens next",
+        nextTitle: "Membership sync keeps the workspace list current.",
+        browseTeams: "Browse current teams",
+      },
     },
   },
   "zh-CN": {
@@ -294,12 +401,65 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       heading: "工作区导航",
       subtitle: "在仪表盘、我的工作区和团队操作之间切换。",
       joinedTeams: "已加入的团队",
+      emptyTeams: "还没有加入团队。你可以创建一个团队或接受邀请。",
+      joinedTeamsBody: "在已登录流程的任意位置直接进入专用团队详情页。",
+      body: "应用会保持由路由驱动的工作区模型，并把已加入团队作为专用目的地。",
+      teamLabel: "团队",
+      primaryItems: {
+        dashboard: "总览和快速入口",
+        personalWorkspace: "个人任务",
+        teamList: "已加入团队",
+        joinTeam: "兑换邀请",
+        createTeam: "创建共享工作区",
+      },
     },
     feedback: {
       unavailableTeam: "当前成员关系中没有这个团队。",
       joinTeamSuccess:
         "你现在可以在 {{teamName}} 中协作。你仍可从 {{navigationLabel}} 进入我的工作区。",
       createInviteReady: "邀请已准备好分享。队友可以在 {{joinSurface}} 中粘贴这段邀请码。",
+    },
+    pages: {
+      dashboard: {
+        heroBody: "已登录的工作区导航会先进入专用仪表盘，让每个目的地都有稳定的页面边界。",
+        actions: {
+          personalWorkspaceBody: "打开专用的个人任务列表页面。",
+          personalWorkspaceFallbackTitle: "个人工作区",
+          teamListBody: "浏览当前成员关系，并进入专用团队详情页。",
+          teamListTitle: "{{count}} 个已加入团队",
+          joinTeamBody: "使用专用加入入口，而不是把流程叠在同一个工作区页面里。",
+          joinTeamTitle: "接受邀请",
+          createTeamBody: "从专用页面创建团队，并继续进入新团队详情页。",
+          createTeamTitle: "开始共享工作区",
+        },
+        stats: {
+          personalWorkspaceFallback: "已就绪",
+          nextFocusLabel: "下一步",
+          nextFocusValue: "加入和创建流程",
+        },
+      },
+      teamList: {
+        body: "从专用目的地打开每个共享工作区。",
+        emptyBody: "创建团队或兑换邀请后，这里会出现团队列表。",
+        emptyEyebrow: "还没有加入团队",
+        emptyTitle: "你的团队会显示在这里。",
+        teamCardBody: "打开这个共享工作区的专用页面。",
+      },
+      joinTeam: {
+        heroBody:
+          "打开共享邀请链接，或直接粘贴邀请码。成功加入后，共享 shell 会直接进入团队详情页。",
+        inviteBody:
+          "邀请接受流程保留在已登录流程中，成员关系生效后共享工作区会出现在仪表盘和团队导航里。",
+        inviteEyebrowLink: "已打开邀请链接",
+        inviteEyebrowManual: "邀请码",
+        inviteHeadingLink: "我们已经为你填入邀请。",
+        inviteHeadingManual: "粘贴邀请以继续。",
+        nextBody:
+          "加入操作会兑换邀请、刷新已加入团队，并进入目标工作区，同时个人工作区仍保留在导航中。",
+        nextEyebrow: "接下来",
+        nextTitle: "成员同步会保持工作区列表最新。",
+        browseTeams: "浏览当前团队",
+      },
     },
   },
 } as const;
@@ -381,6 +541,7 @@ export interface ResolveWorkspaceRouteEffectInput {
   activeWorkspaceId: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  locale?: string | null;
   personalWorkspaceId: string | null;
   route: WorkspaceShellRoute;
   routedTeamWorkspaceId: string | null;
@@ -647,7 +808,7 @@ export function resolveWorkspaceRouteEffect(
 
     return {
       redirectRoute: { name: "team-list" },
-      routeNotice: getWorkspaceShellResource().feedback.unavailableTeam,
+      routeNotice: getWorkspaceShellResource(input.locale).feedback.unavailableTeam,
       selectWorkspaceId: null,
     };
   }
@@ -740,8 +901,9 @@ export function extractInviteCode(value: string): string {
 export function getCreateInviteSuccessOutcome(
   invite: InviteRecord,
   joinSurface = "desktop or dashboard join flow",
+  locale?: string | null,
 ) {
-  const template = getWorkspaceShellResource().feedback.createInviteReady;
+  const template = getWorkspaceShellResource(locale).feedback.createInviteReady;
 
   return {
     code: invite.token,
@@ -754,11 +916,12 @@ export function getJoinTeamSuccessOutcome<TWorkspace extends WorkspaceSummary>(
   workspace: TWorkspace,
   options?: {
     activeWorkspaceId?: string | null;
+    locale?: string | null;
     navigationLabel?: string;
     teamSection?: WorkspaceShellTeamSection;
   },
 ): JoinTeamSuccessOutcome {
-  const template = getWorkspaceShellResource().feedback.joinTeamSuccess;
+  const template = getWorkspaceShellResource(options?.locale).feedback.joinTeamSuccess;
   const outcome: JoinTeamSuccessOutcome = {
     route: {
       name: "team-detail",

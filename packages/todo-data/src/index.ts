@@ -12,7 +12,11 @@ export {
   createMemorySessionStorageAdapter,
   createSupabaseStorageAdapter,
 } from "./storage.ts";
-export { createTodoSupabaseClient, createTodoSupabaseClientOptions } from "./client.ts";
+export {
+  createTimeoutFetch,
+  createTodoSupabaseClient,
+  createTodoSupabaseClientOptions,
+} from "./client.ts";
 export {
   SupabaseAuthRepository,
   createSupabaseAuthRepository,

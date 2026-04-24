@@ -55,6 +55,7 @@ const FALLBACK_STATE: TodoAppState = {
 interface MobileBootstrap {
   controller: TodoAppController | null;
   envError: string | null;
+  workspaceShellLocale: string;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -81,11 +82,13 @@ function createMobileBootstrap(): MobileBootstrap {
         todoRepository: createSupabaseTodoRepository(client),
       }),
       envError: null,
+      workspaceShellLocale: env.workspaceShellLocale,
     };
   } catch (error) {
     return {
       controller: null,
       envError: toErrorMessage(error),
+      workspaceShellLocale: "en",
     };
   }
 }
@@ -152,6 +155,7 @@ export function MobileAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
+      locale: bootstrap.workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -298,7 +302,7 @@ export function MobileAppShell() {
     await controller
       .createTeamInvite(routedTeamWorkspace.teamId)
       .then((invite) => {
-        const outcome = getCreateInviteSuccessOutcome(invite);
+        const outcome = getCreateInviteSuccessOutcome(invite, bootstrap.workspaceShellLocale);
         setTeamInviteCode(outcome.code);
         setTeamInviteExpiresAt(outcome.expiresAt);
         setTeamInviteMessage(outcome.message);
@@ -318,6 +322,7 @@ export function MobileAppShell() {
       .then(async (workspace) => {
         const outcome = getJoinInviteSuccessOutcome({
           activeWorkspaceId: controller.getState().activeWorkspaceId,
+          locale: bootstrap.workspaceShellLocale,
           workspace,
         });
 
@@ -412,6 +417,7 @@ export function MobileAppShell() {
               hasAnyTodos={viewModel.todos.length > 0}
               joinFeedback={joinFeedback}
               joinInviteCode={joinInviteCode}
+              locale={bootstrap.workspaceShellLocale}
               onCancelEdit={cancelEditing}
               onCreateTeam={() => void createTeam()}
               onCreateTeamInvite={() => void createTeamInvite()}

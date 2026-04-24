@@ -110,38 +110,40 @@ function getTaskEmptyStateCopy(input: {
 
 function MobileDestinationRail({
   disabled,
+  locale,
   onNavigate,
   route,
 }: {
   disabled: boolean;
+  locale?: string | null;
   onNavigate: (route: MobileRoute) => void;
   route: MobileRoute;
 }) {
-  const resource = getWorkspaceShellResource();
+  const resource = getWorkspaceShellResource(locale);
   const destinations = [
     {
       label: resource.destinations.dashboard.label,
-      meta: "Overview",
+      meta: resource.navigation.primaryItems.dashboard,
       route: { name: "dashboard" } as const,
     },
     {
       label: resource.destinations.personalWorkspace.label,
-      meta: "Personal tasks",
+      meta: resource.navigation.primaryItems.personalWorkspace,
       route: { name: "personal-workspace" } as const,
     },
     {
       label: resource.destinations.teamList.label,
-      meta: "Joined teams",
+      meta: resource.navigation.primaryItems.teamList,
       route: { name: "team-list" } as const,
     },
     {
       label: resource.destinations.joinTeam.label,
-      meta: "Invite flow",
+      meta: resource.navigation.primaryItems.joinTeam,
       route: { name: "join-team" } as const,
     },
     {
       label: resource.destinations.createTeam.label,
-      meta: "New shared space",
+      meta: resource.navigation.primaryItems.createTeam,
       route: { name: "create-team" } as const,
     },
   ];
@@ -535,6 +537,7 @@ export function MobileSignedInPages({
   hasAnyTodos,
   joinFeedback,
   joinInviteCode,
+  locale,
   onCancelEdit,
   onCreateTeam,
   onCreateTeamInvite,
@@ -580,6 +583,7 @@ export function MobileSignedInPages({
     message: string;
   } | null;
   joinInviteCode: string;
+  locale?: string | null;
   onCancelEdit: () => void;
   onCreateTeam: () => void;
   onCreateTeamInvite: () => void;
@@ -611,7 +615,7 @@ export function MobileSignedInPages({
   teamInviteMessage: string | null;
   viewModel: TodoAppViewModel;
 }) {
-  const resource = getWorkspaceShellResource();
+  const resource = getWorkspaceShellResource(locale);
   const personalWorkspace =
     viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
   const teamWorkspaces = viewModel.workspaces.filter(
@@ -627,7 +631,7 @@ export function MobileSignedInPages({
       : route.name === "team-detail"
         ? routedTeamWorkspace
         : viewModel.activeWorkspace;
-  const pageTitle = getMobileRouteTitle(route, routedTeamWorkspace?.name);
+  const pageTitle = getMobileRouteTitle(route, routedTeamWorkspace?.name, locale);
 
   return (
     <View style={styles.stack}>
@@ -684,18 +688,22 @@ export function MobileSignedInPages({
         <Text style={styles.eyebrow}>DESTINATIONS</Text>
         <Text style={styles.sectionTitle}>{resource.navigation.heading}</Text>
         <Text style={styles.sectionSubtitle}>{resource.navigation.subtitle}</Text>
-        <MobileDestinationRail disabled={pendingUi} onNavigate={onNavigate} route={route} />
+        <MobileDestinationRail
+          disabled={pendingUi}
+          locale={locale}
+          onNavigate={onNavigate}
+          route={route}
+        />
       </View>
 
       {route.name === "dashboard" ? (
         <View style={styles.stack}>
           <View style={styles.workspaceCard}>
-            <Text style={styles.eyebrow}>DASHBOARD</Text>
-            <Text style={styles.sectionTitle}>Choose where to work</Text>
-            <Text style={styles.body}>
-              Start from dashboard, jump into your personal workspace, browse joined teams, or open
-              the dedicated join/create destinations.
+            <Text style={styles.eyebrow}>
+              {resource.destinations.dashboard.label.toUpperCase()}
             </Text>
+            <Text style={styles.sectionTitle}>Choose where to work</Text>
+            <Text style={styles.body}>{resource.pages.dashboard.heroBody}</Text>
           </View>
 
           <View style={styles.heroActionGrid}>
@@ -726,11 +734,8 @@ export function MobileSignedInPages({
 
           <View style={styles.workspaceCard}>
             <Text style={styles.eyebrow}>{resource.navigation.joinedTeams.toUpperCase()}</Text>
-            <Text style={styles.sectionTitle}>Dedicated team detail destinations</Text>
-            <Text style={styles.body}>
-              Each joined team now has its own destination instead of being mixed into one combined
-              screen.
-            </Text>
+            <Text style={styles.sectionTitle}>{resource.destinations.teamDetail.label}</Text>
+            <Text style={styles.body}>{resource.pages.teamList.body}</Text>
             <View style={styles.stack}>
               {teamWorkspaces.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -751,7 +756,9 @@ export function MobileSignedInPages({
                     style={styles.workspaceTab}
                   >
                     <Text style={styles.workspaceTabLabel}>{workspace.name}</Text>
-                    <Text style={styles.workspaceTabMeta}>Open team detail</Text>
+                    <Text style={styles.workspaceTabMeta}>
+                      {resource.destinations.teamDetail.label}
+                    </Text>
                   </Pressable>
                 ))
               )}
@@ -763,21 +770,16 @@ export function MobileSignedInPages({
       {route.name === "team-list" ? (
         <View style={styles.stack}>
           <View style={styles.workspaceCard}>
-            <Text style={styles.eyebrow}>TEAM LIST</Text>
-            <Text style={styles.sectionTitle}>Browse joined teams</Text>
-            <Text style={styles.body}>
-              Team list is now a dedicated mobile destination and each entry opens a team detail
-              page.
-            </Text>
+            <Text style={styles.eyebrow}>{resource.destinations.teamList.label.toUpperCase()}</Text>
+            <Text style={styles.sectionTitle}>{resource.navigation.joinedTeams}</Text>
+            <Text style={styles.body}>{resource.pages.teamList.body}</Text>
           </View>
           <View style={styles.stack}>
             {teamWorkspaces.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.eyebrow}>NO TEAM MEMBERSHIPS</Text>
-                <Text style={styles.sectionTitle}>You have not joined a team yet.</Text>
-                <Text style={styles.body}>
-                  Use the dedicated join team or create team destinations to continue.
-                </Text>
+                <Text style={styles.eyebrow}>{resource.pages.teamList.emptyEyebrow}</Text>
+                <Text style={styles.sectionTitle}>{resource.pages.teamList.emptyTitle}</Text>
+                <Text style={styles.body}>{resource.pages.teamList.emptyBody}</Text>
               </View>
             ) : (
               teamWorkspaces.map((workspace) => (
@@ -787,7 +789,9 @@ export function MobileSignedInPages({
                   style={styles.workspaceTab}
                 >
                   <Text style={styles.workspaceTabLabel}>{workspace.name}</Text>
-                  <Text style={styles.workspaceTabMeta}>Open dedicated team detail</Text>
+                  <Text style={styles.workspaceTabMeta}>
+                    {resource.destinations.teamDetail.label}
+                  </Text>
                 </Pressable>
               ))
             )}
@@ -854,12 +858,9 @@ export function MobileSignedInPages({
 
       {route.name === "join-team" ? (
         <View style={styles.emptyState}>
-          <Text style={styles.eyebrow}>JOIN TEAM</Text>
-          <Text style={styles.sectionTitle}>Redeem an invite</Text>
-          <Text style={styles.body}>
-            Paste an invite code or link. After a successful join, mobile lands in the dedicated
-            team detail destination.
-          </Text>
+          <Text style={styles.eyebrow}>{resource.destinations.joinTeam.label.toUpperCase()}</Text>
+          <Text style={styles.sectionTitle}>{resource.pages.joinTeam.inviteHeadingManual}</Text>
+          <Text style={styles.body}>{resource.pages.joinTeam.heroBody}</Text>
           <TextInput
             autoCapitalize="none"
             editable={!pendingUi}
@@ -874,7 +875,7 @@ export function MobileSignedInPages({
               onPress={onJoinTeam}
               style={[styles.primaryButton, pendingUi ? styles.buttonDisabled : null]}
             >
-              <Text style={styles.primaryButtonText}>Join team</Text>
+              <Text style={styles.primaryButtonText}>{resource.destinations.joinTeam.label}</Text>
             </Pressable>
             <Pressable
               onPress={() => onNavigate({ name: "team-list" })}
@@ -891,7 +892,7 @@ export function MobileSignedInPages({
 
       {route.name === "create-team" ? (
         <View style={styles.emptyState}>
-          <Text style={styles.eyebrow}>CREATE TEAM</Text>
+          <Text style={styles.eyebrow}>{resource.destinations.createTeam.label.toUpperCase()}</Text>
           <Text style={styles.sectionTitle}>Create a shared workspace</Text>
           <Text style={styles.body}>
             Create a team from its own mobile destination, then continue directly into team detail.
@@ -909,7 +910,7 @@ export function MobileSignedInPages({
               onPress={onCreateTeam}
               style={[styles.primaryButton, pendingUi ? styles.buttonDisabled : null]}
             >
-              <Text style={styles.primaryButtonText}>Create team</Text>
+              <Text style={styles.primaryButtonText}>{resource.destinations.createTeam.label}</Text>
             </Pressable>
             <Pressable
               onPress={() => onNavigate({ name: "team-list" })}

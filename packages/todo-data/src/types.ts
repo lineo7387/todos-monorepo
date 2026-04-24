@@ -179,6 +179,7 @@ export interface TodoSupabaseOptions {
   persistSession?: boolean;
   autoRefreshToken?: boolean;
   detectSessionInUrl?: boolean;
+  requestTimeoutMs?: number;
   sessionStorage?: TodoSessionStorageAdapter;
   userStorage?: TodoSessionStorageAdapter;
   global?: TodoSupabaseClientOptions["global"];

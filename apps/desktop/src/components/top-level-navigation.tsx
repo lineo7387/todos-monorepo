@@ -3,6 +3,7 @@ import { getWorkspaceShellResource, WorkspaceTopNavigation } from "workspace-she
 
 export interface DesktopTopLevelNavigationProps {
   currentRoute: DesktopRoute;
+  locale?: string | null;
   onNavigate: (route: DesktopRoute) => void;
   personalWorkspace: {
     name: string;
@@ -16,30 +17,32 @@ export interface DesktopTopLevelNavigationProps {
 
 export function DesktopTopLevelNavigation({
   currentRoute,
+  locale,
   onNavigate,
   personalWorkspace,
   teams,
 }: DesktopTopLevelNavigationProps) {
-  const resource = getWorkspaceShellResource();
+  const resource = getWorkspaceShellResource(locale);
 
   return (
     <WorkspaceTopNavigation<DesktopRoute>
-      emptyTeamsCopy="No joined teams yet. Create one or accept an invite."
-      joinedTeamsCopy="Jump directly into a dedicated team detail page from anywhere in the signed-in flow."
+      emptyTeamsCopy={resource.navigation.emptyTeams}
+      joinedTeamsCopy={resource.navigation.joinedTeamsBody}
       joinedTeamsLabel={resource.navigation.joinedTeams}
-      navigationBody="Desktop should feel like the same product model as web, with dedicated destinations for dashboard, my workspace, joined teams, and team flows."
+      navigationBody={resource.navigation.body}
       navigationHeading={resource.navigation.heading}
       navigationSubtitle={resource.navigation.subtitle}
       primaryItems={[
         {
-          description: "Overview and quick entry points",
+          description: resource.navigation.primaryItems.dashboard,
           isActive: isDesktopRouteActive(currentRoute, { name: "dashboard" }),
           key: "dashboard",
           label: resource.destinations.dashboard.label,
           route: { name: "dashboard" } satisfies DesktopRoute,
         },
         {
-          description: personalWorkspace?.name ?? "Personal tasks",
+          description:
+            personalWorkspace?.name ?? resource.navigation.primaryItems.personalWorkspace,
           isActive: isDesktopRouteActive(currentRoute, {
             name: "personal-workspace",
             section: "tasks",
@@ -49,21 +52,21 @@ export function DesktopTopLevelNavigation({
           route: { name: "personal-workspace", section: "tasks" } satisfies DesktopRoute,
         },
         {
-          description: `${teams.length} team${teams.length === 1 ? "" : "s"}`,
+          description: resource.navigation.primaryItems.teamList,
           isActive: isDesktopRouteActive(currentRoute, { name: "team-list" }),
           key: "team-list",
-          label: "Joined teams",
+          label: resource.destinations.teamList.label,
           route: { name: "team-list" } satisfies DesktopRoute,
         },
         {
-          description: "Redeem an invite",
+          description: resource.navigation.primaryItems.joinTeam,
           isActive: isDesktopRouteActive(currentRoute, { name: "join-team" }),
           key: "join-team",
           label: resource.destinations.joinTeam.label,
           route: { name: "join-team" } satisfies DesktopRoute,
         },
         {
-          description: "Start a shared workspace",
+          description: resource.navigation.primaryItems.createTeam,
           isActive: isDesktopRouteActive(currentRoute, { name: "create-team" }),
           key: "create-team",
           label: resource.destinations.createTeam.label,
@@ -81,6 +84,7 @@ export function DesktopTopLevelNavigation({
           {children}
         </button>
       )}
+      teamLabel={resource.navigation.teamLabel}
       teams={teams.map((team) => ({
         id: team.id,
         isActive: isDesktopRouteActive(currentRoute, team.route),

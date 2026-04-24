@@ -10,6 +10,7 @@ import {
   createSupabaseAuthRepository,
   createSupabaseTodoRepository,
   createSupabaseStorageAdapter,
+  createTimeoutFetch,
   createTodoSupabaseClientOptions,
   mapSupabaseSession,
   refreshTodos,
@@ -84,6 +85,32 @@ describe("createTodoSupabaseClientOptions", () => {
     expect(options.auth?.autoRefreshToken).toBe(true);
     expect(options.auth?.detectSessionInUrl).toBe(true);
     expect(options.auth?.storage).toBeDefined();
+    expect(options.global?.fetch).toBeDefined();
+  });
+
+  test("wraps Supabase fetch calls with a request timeout", async () => {
+    let aborted = false;
+    const timedFetch = createTimeoutFetch(
+      (_input, init) =>
+        new Promise<Response>((_resolve, _reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            aborted = true;
+          });
+        }),
+      5,
+    );
+
+    await expect(timedFetch("https://example.supabase.co/auth/v1/token")).rejects.toThrow(
+      "Supabase request timed out after 5 ms.",
+    );
+    expect(aborted).toBe(true);
+  });
+
+  test("allows the Supabase request timeout to be disabled", async () => {
+    const response = new Response("ok");
+    const timedFetch = createTimeoutFetch(async () => response, 0);
+
+    await expect(timedFetch("https://example.supabase.co/rest/v1/todos")).resolves.toBe(response);
   });
 
   test("disables url session detection by default outside web", () => {

@@ -31,6 +31,7 @@ export interface WorkspaceTopNavigationProps<TRoute> {
   navigationSubtitle: string;
   primaryItems: WorkspaceTopNavigationItem<TRoute>[];
   renderAction: (input: RenderWorkspaceTopNavigationActionInput<TRoute>) => ReactNode;
+  teamLabel: string;
   teams: WorkspaceTopNavigationTeam<TRoute>[];
 }
 
@@ -43,6 +44,7 @@ export function WorkspaceTopNavigation<TRoute>({
   navigationSubtitle,
   primaryItems,
   renderAction,
+  teamLabel,
   teams,
 }: WorkspaceTopNavigationProps<TRoute>) {
   return (
@@ -83,7 +85,7 @@ export function WorkspaceTopNavigation<TRoute>({
               renderAction({
                 children: (
                   <>
-                    <span>Team</span>
+                    <span>{teamLabel}</span>
                     <strong>{team.name}</strong>
                   </>
                 ),

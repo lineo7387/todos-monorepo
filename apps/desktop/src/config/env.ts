@@ -2,6 +2,7 @@ export interface DesktopSupabaseEnv {
   url: string;
   anonKey: string;
   sessionStorageKey: string;
+  workspaceShellLocale: string;
 }
 
 function readRequiredEnv(name: "VITE_SUPABASE_URL" | "VITE_SUPABASE_ANON_KEY") {
@@ -21,5 +22,6 @@ export function getDesktopSupabaseEnv(): DesktopSupabaseEnv {
     url: readRequiredEnv("VITE_SUPABASE_URL"),
     anonKey: readRequiredEnv("VITE_SUPABASE_ANON_KEY"),
     sessionStorageKey: "sb-todos-auth-desktop",
+    workspaceShellLocale: import.meta.env.VITE_WORKSPACE_SHELL_LOCALE ?? "en",
   };
 }

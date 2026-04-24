@@ -23,14 +23,22 @@ type JoinInviteFailureInput = {
 };
 
 export const extractInviteCode = extractWorkspaceInviteCode;
-export const getCreateInviteSuccessOutcome = getCreateWorkspaceInviteSuccessOutcome;
+
+export function getCreateInviteSuccessOutcome(
+  input: { expiresAt: string; token: string },
+  locale?: string | null,
+) {
+  return getCreateWorkspaceInviteSuccessOutcome(input, "desktop or dashboard join flow", locale);
+}
 
 export function getJoinInviteSuccessOutcome(input: {
   activeWorkspaceId: string | null;
+  locale?: string | null;
   workspace: DesktopWorkspaceSummary;
 }) {
   return getJoinTeamSuccessOutcome(input.workspace, {
     activeWorkspaceId: input.activeWorkspaceId,
+    locale: input.locale,
     navigationLabel: "desktop navigation",
     teamSection: "tasks",
   });

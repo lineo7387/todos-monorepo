@@ -183,6 +183,10 @@ describe("workspace-shell route contract", () => {
       team: "团队",
     });
     expect(getWorkspaceShellResource("zh").navigation.joinedTeams).toBe("已加入的团队");
+    expect(getWorkspaceShellResource("zh").navigation.primaryItems.joinTeam).toBe("兑换邀请");
+    expect(getWorkspaceShellResource("zh").pages.teamList.emptyTitle).toBe(
+      "你的团队会显示在这里。",
+    );
     expect(normalizeWorkspaceShellLocale("en-US")).toBe("en");
   });
 });
@@ -194,13 +198,14 @@ describe("workspace-shell pure helpers", () => {
         activeWorkspaceId: "personal:user-1",
         isAuthenticated: true,
         isLoading: false,
+        locale: "zh-CN",
         personalWorkspaceId: "personal:user-1",
         route: { name: "team-detail", teamId: "missing-team" },
         routedTeamWorkspaceId: null,
       }),
     ).toEqual({
       redirectRoute: { name: "team-list" },
-      routeNotice: "That team is not available in your current memberships.",
+      routeNotice: "当前成员关系中没有这个团队。",
       selectWorkspaceId: null,
     });
   });
@@ -245,6 +250,16 @@ describe("workspace-shell pure helpers", () => {
         "Invite ready to share. Teammates can paste this code into the desktop or dashboard join flow.",
     });
     expect(
+      getCreateInviteSuccessOutcome(
+        {
+          token: "invite-token",
+          expiresAt: "2026-04-28T00:00:00.000Z",
+        },
+        "桌面端加入流程",
+        "zh-CN",
+      ).message,
+    ).toBe("邀请已准备好分享。队友可以在 桌面端加入流程 中粘贴这段邀请码。");
+    expect(
       getJoinTeamSuccessOutcome(
         {
           id: "team-joined",
@@ -253,14 +268,14 @@ describe("workspace-shell pure helpers", () => {
         },
         {
           activeWorkspaceId: "personal:user-1",
-          navigationLabel: "desktop navigation",
+          locale: "zh-CN",
+          navigationLabel: "桌面导航",
           teamSection: "tasks",
         },
       ),
     ).toEqual({
       route: { name: "team-detail", teamId: "team-joined", section: "tasks" },
-      routeNotice:
-        "You can now work in Research. My workspace stays available from desktop navigation.",
+      routeNotice: "你现在可以在 Research 中协作。你仍可从 桌面导航 进入我的工作区。",
       selectWorkspaceId: "team-joined",
     });
     expect(

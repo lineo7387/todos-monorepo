@@ -24,16 +24,21 @@ type JoinInviteFailureInput = {
 
 export const extractInviteCode = extractWorkspaceInviteCode;
 
-export function getCreateInviteSuccessOutcome(input: { expiresAt: string; token: string }) {
-  return getCreateWorkspaceInviteSuccessOutcome(input, "mobile join team screen");
+export function getCreateInviteSuccessOutcome(
+  input: { expiresAt: string; token: string },
+  locale?: string | null,
+) {
+  return getCreateWorkspaceInviteSuccessOutcome(input, "mobile join team screen", locale);
 }
 
 export function getJoinInviteSuccessOutcome(input: {
   activeWorkspaceId: string | null;
+  locale?: string | null;
   workspace: MobileWorkspaceSummary;
 }) {
   return getJoinTeamSuccessOutcome(input.workspace, {
     activeWorkspaceId: input.activeWorkspaceId,
+    locale: input.locale,
     navigationLabel: "mobile destinations",
     teamSection: "tasks",
   });

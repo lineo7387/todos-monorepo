@@ -41,6 +41,7 @@ const FALLBACK_STATE: TodoAppState = {
 interface WebsiteBootstrap {
   controller: ReturnType<typeof createTodoAppController> | null;
   envError: string | null;
+  workspaceShellLocale: string;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -58,6 +59,7 @@ function createWebsiteBootstrap(): WebsiteBootstrap {
     const client = createTodoSupabaseClient({
       env,
       runtime: "web",
+      requestTimeoutMs: env.requestTimeoutMs,
       sessionStorage: storage,
     });
 
@@ -67,11 +69,13 @@ function createWebsiteBootstrap(): WebsiteBootstrap {
         todoRepository: createSupabaseTodoRepository(client),
       }),
       envError: null,
+      workspaceShellLocale: env.workspaceShellLocale,
     };
   } catch (error) {
     return {
       controller: null,
       envError: toErrorMessage(error),
+      workspaceShellLocale: "en",
     };
   }
 }
@@ -239,6 +243,7 @@ export function WebsiteAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
+      locale: bootstrap.workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -391,7 +396,9 @@ export function WebsiteAppShell() {
     await controller
       .redeemTeamInvite(joinInviteCode)
       .then((workspace) => {
-        const outcome = getJoinTeamSuccessOutcome(workspace);
+        const outcome = getJoinTeamSuccessOutcome(workspace, {
+          locale: bootstrap.workspaceShellLocale,
+        });
         setJoinInviteCode("");
         navigate(outcome.route);
         setRouteNotice(outcome.routeNotice);
@@ -437,7 +444,13 @@ export function WebsiteAppShell() {
         <header className="workspace-header workspace-header--page">
           <div className="workspace-header__title">
             <p className="workspace-header__eyebrow">Web client</p>
-            <h1>{getWorkspaceRouteTitle(route, routedTeamWorkspace?.name)}</h1>
+            <h1>
+              {getWorkspaceRouteTitle(
+                route,
+                routedTeamWorkspace?.name,
+                bootstrap.workspaceShellLocale,
+              )}
+            </h1>
           </div>
 
           {viewModel.isAuthenticated ? (
@@ -471,6 +484,7 @@ export function WebsiteAppShell() {
           {viewModel.isAuthenticated ? (
             <TopLevelNavigation
               currentRoute={route}
+              locale={bootstrap.workspaceShellLocale}
               onNavigate={navigate}
               personalWorkspace={personalWorkspace}
               teams={teamWorkspaces}
@@ -534,6 +548,7 @@ export function WebsiteAppShell() {
               hasAnyTodos={viewModel.todos.length > 0}
               joinFeedback={joinFeedback}
               joinInviteCode={joinInviteCode}
+              locale={bootstrap.workspaceShellLocale}
               onCancelEditing={cancelEditing}
               onCreateSubmit={(event) => void handleCreateSubmit(event)}
               onCreateTeamInvite={() => void handleCreateTeamInvite()}

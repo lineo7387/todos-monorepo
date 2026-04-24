@@ -19,7 +19,7 @@
 ## 4. Cross-client localization alignment
 
 - [ ] 4.1 Replace duplicated workspace-shell strings in web, desktop, and mobile with shared translation keys and English/Chinese resources
-- [ ] 4.2 Add locale switching or locale selection plumbing needed so the shared workspace-shell resources can render consistently on all supported clients
+- [x] 4.2 Add locale switching or locale selection plumbing needed so the shared workspace-shell resources can render consistently on all supported clients
 - [ ] 4.3 Verify that route labels, empty states, join/create feedback, and core workspace terms remain consistent across web, desktop, and mobile in both supported languages
 
 ## 5. Verification and migration cleanup

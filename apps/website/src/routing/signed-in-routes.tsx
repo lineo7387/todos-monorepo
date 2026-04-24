@@ -52,6 +52,7 @@ export interface WebsiteSignedInRoutesProps {
     message: string;
   } | null;
   joinInviteCode: string;
+  locale?: string | null;
   onCancelEditing: () => void;
   onCopyTeamInviteCode: () => void;
   onCopyTeamInviteLink: () => void;
@@ -107,6 +108,7 @@ export function WebsiteSignedInRoutes({
   isSubmitting,
   joinFeedback,
   joinInviteCode,
+  locale,
   onCancelEditing,
   onCopyTeamInviteCode,
   onCopyTeamInviteLink,
@@ -150,6 +152,7 @@ export function WebsiteSignedInRoutes({
       <Route
         element={
           <WorkspaceShellSignedInDashboardPage
+            locale={locale}
             personalWorkspaceName={personalWorkspace?.name ?? null}
             renderRouteAction={({ children, className, key, route }) => (
               <RouteLink
@@ -209,7 +212,8 @@ export function WebsiteSignedInRoutes({
                 {label}
               </RouteLink>
             )}
-            routeTitle={getWorkspaceRouteTitle({ name: "personal-workspace" })}
+            routeTitle={getWorkspaceRouteTitle({ name: "personal-workspace" }, undefined, locale)}
+            locale={locale}
             section="tasks"
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
@@ -226,6 +230,7 @@ export function WebsiteSignedInRoutes({
       <Route
         element={
           <WorkspaceShellSignedInTeamListPage
+            locale={locale}
             renderNavigationAction={({ className, label, route }) => (
               <RouteLink
                 className={className}
@@ -291,7 +296,8 @@ export function WebsiteSignedInRoutes({
                 {label}
               </RouteLink>
             )}
-            routeTitle={getWorkspaceRouteTitle(route, routedTeamWorkspace?.name)}
+            routeTitle={getWorkspaceRouteTitle(route, routedTeamWorkspace?.name, locale)}
+            locale={locale}
             section="tasks"
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
@@ -320,6 +326,7 @@ export function WebsiteSignedInRoutes({
             feedback={joinFeedback as WorkspaceShellJoinTeamFeedback | null}
             inputValue={joinInviteCode}
             isSubmitting={isSubmitting}
+            locale={locale}
             onDismissFeedback={onDismissJoinFeedback}
             onInputChange={onInviteCodeChange}
             onSubmit={onJoinTeamSubmit}
@@ -353,6 +360,7 @@ export function WebsiteSignedInRoutes({
           <WorkspaceShellSignedInCreateTeamPage
             canManageTodos={canManageTodos}
             draftTeamName={draftTeamName}
+            locale={locale}
             onDraftTeamNameChange={onDraftTeamNameChange}
             onSubmit={onCreateTeamSubmit}
             renderNavigationAction={({ className, label, route }) => (

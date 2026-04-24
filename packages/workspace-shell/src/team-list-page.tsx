@@ -10,6 +10,8 @@ export interface WorkspaceShellTeamListPageTeam {
 
 export interface WorkspaceShellTeamListPageProps {
   emptyStateBody: string;
+  emptyStateEyebrow: string;
+  emptyStateTitle: string;
   renderNavigationAction: (input: {
     className: string;
     label: string;
@@ -22,6 +24,8 @@ export interface WorkspaceShellTeamListPageProps {
 
 export function WorkspaceShellTeamListPage({
   emptyStateBody,
+  emptyStateEyebrow,
+  emptyStateTitle,
   renderNavigationAction,
   renderTeamCard,
   teams,
@@ -52,8 +56,8 @@ export function WorkspaceShellTeamListPage({
 
       {teams.length === 0 ? (
         <section className="empty-state">
-          <p className="empty-state__eyebrow">No joined teams yet</p>
-          <h3>Your teams will appear here.</h3>
+          <p className="empty-state__eyebrow">{emptyStateEyebrow}</p>
+          <h3>{emptyStateTitle}</h3>
           <p>{emptyStateBody}</p>
         </section>
       ) : (

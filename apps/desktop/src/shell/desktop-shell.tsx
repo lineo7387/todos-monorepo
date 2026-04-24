@@ -70,6 +70,7 @@ const FALLBACK_STATE: TodoAppState = {
 interface DesktopBootstrap {
   controller: TodoAppController | null;
   envError: string | null;
+  workspaceShellLocale: string;
 }
 
 type JoinFeedback = DesktopJoinFeedback;
@@ -99,11 +100,13 @@ function createDesktopBootstrap(): DesktopBootstrap {
         todoRepository: createSupabaseTodoRepository(client),
       }),
       envError: null,
+      workspaceShellLocale: env.workspaceShellLocale,
     };
   } catch (error) {
     return {
       controller: null,
       envError: toErrorMessage(error),
+      workspaceShellLocale: "en",
     };
   }
 }
@@ -264,6 +267,7 @@ export function DesktopAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
+      locale: bootstrap.workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -398,7 +402,7 @@ export function DesktopAppShell() {
     await controller
       .createTeamInvite(routedTeamWorkspace.teamId)
       .then((invite) => {
-        const outcome = getCreateInviteSuccessOutcome(invite);
+        const outcome = getCreateInviteSuccessOutcome(invite, bootstrap.workspaceShellLocale);
 
         setTeamInviteCode(outcome.code);
         setTeamInviteExpiresAt(outcome.expiresAt);
@@ -421,6 +425,7 @@ export function DesktopAppShell() {
       .then(async (workspace) => {
         const outcome = getJoinInviteSuccessOutcome({
           activeWorkspaceId: controller.getState().activeWorkspaceId,
+          locale: bootstrap.workspaceShellLocale,
           workspace,
         });
 
@@ -514,7 +519,11 @@ export function DesktopAppShell() {
             <p className="workspace-header__eyebrow">Desktop client</p>
             <h1>
               {viewModel.isAuthenticated
-                ? getDesktopRouteTitle(route, routedTeamWorkspace?.name)
+                ? getDesktopRouteTitle(
+                    route,
+                    routedTeamWorkspace?.name,
+                    bootstrap.workspaceShellLocale,
+                  )
                 : "Todo workspace"}
             </h1>
           </div>
@@ -650,6 +659,7 @@ export function DesktopAppShell() {
           <div className="page-stack">
             <DesktopTopLevelNavigation
               currentRoute={route}
+              locale={bootstrap.workspaceShellLocale}
               onNavigate={navigate}
               personalWorkspace={personalWorkspace}
               teams={teamWorkspaces.map((workspace) => ({
@@ -671,6 +681,7 @@ export function DesktopAppShell() {
                   <WorkspaceShellSignedInCreateTeamPage
                     canManageTodos={viewModel.canManageTodos}
                     draftTeamName={draftTeamName}
+                    locale={bootstrap.workspaceShellLocale}
                     onDraftTeamNameChange={setDraftTeamName}
                     onSubmit={(event) => void handleCreateTeamSubmit(event)}
                     renderNavigationAction={({ className, label, route }) => (
@@ -686,6 +697,7 @@ export function DesktopAppShell() {
                 ),
                 [workspaceShellPageIds.dashboard]: (
                   <WorkspaceShellSignedInDashboardPage
+                    locale={bootstrap.workspaceShellLocale}
                     personalWorkspaceName={personalWorkspace?.name ?? null}
                     renderRouteAction={({ children, className, key, route }) => (
                       <button
@@ -714,6 +726,7 @@ export function DesktopAppShell() {
                     feedback={joinFeedback}
                     inputValue={joinInviteInput}
                     isSubmitting={pendingUi}
+                    locale={bootstrap.workspaceShellLocale}
                     onDismissFeedback={() => setJoinFeedback(null)}
                     onInputChange={setJoinInviteInput}
                     onSubmit={(event) => void handleJoinTeamSubmit(event)}
@@ -742,6 +755,7 @@ export function DesktopAppShell() {
                     emptyStateCopy={emptyStateCopy}
                     hasAnyTodos={viewModel.todos.length > 0}
                     layout="sectioned"
+                    locale={bootstrap.workspaceShellLocale}
                     onCancelEditing={cancelEditing}
                     onCreateSubmit={(event) => void handleCreateSubmit(event)}
                     onDateViewChange={setDateView}
@@ -776,7 +790,11 @@ export function DesktopAppShell() {
                         Edit
                       </button>
                     )}
-                    routeTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
+                    routeTitle={getDesktopRouteTitle(
+                      route,
+                      routedTeamWorkspace?.name,
+                      bootstrap.workspaceShellLocale,
+                    )}
                     sectionRoutes={[
                       {
                         isActive: personalWorkspaceSection === "tasks",
@@ -814,6 +832,7 @@ export function DesktopAppShell() {
                     emptyStateCopy={emptyStateCopy}
                     hasAnyTodos={viewModel.todos.length > 0}
                     layout="sectioned"
+                    locale={bootstrap.workspaceShellLocale}
                     onCancelEditing={cancelEditing}
                     onCreateSubmit={(event) => void handleCreateSubmit(event)}
                     onDateViewChange={setDateView}
@@ -848,7 +867,11 @@ export function DesktopAppShell() {
                         Edit
                       </button>
                     )}
-                    routeTitle={getDesktopRouteTitle(route, routedTeamWorkspace?.name)}
+                    routeTitle={getDesktopRouteTitle(
+                      route,
+                      routedTeamWorkspace?.name,
+                      bootstrap.workspaceShellLocale,
+                    )}
                     sectionRoutes={
                       route.name === "team-detail" && pageWorkspace?.kind === "team"
                         ? [
@@ -906,6 +929,7 @@ export function DesktopAppShell() {
                 ),
                 [workspaceShellPageIds.teamList]: (
                   <WorkspaceShellSignedInTeamListPage
+                    locale={bootstrap.workspaceShellLocale}
                     renderNavigationAction={({ className, label, route }) => (
                       <DesktopActionLink
                         className={className}

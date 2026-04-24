@@ -7,6 +7,7 @@ import type {
   WorkspaceShellTeamSection,
   WorkspaceShellWorkspaceSection,
 } from "./index.ts";
+import { getWorkspaceShellResource } from "./index.ts";
 import { WorkspaceShellCreateTeamPage } from "./create-team-page.tsx";
 import { WorkspaceShellDashboardPage } from "./dashboard-page.tsx";
 import {
@@ -37,6 +38,7 @@ export interface WorkspaceShellSignedInTeam<TRoute> {
 }
 
 export interface WorkspaceShellSignedInDashboardPageProps<TRoute> {
+  locale?: string | null;
   personalWorkspaceName: string | null;
   renderRouteAction: (input: RenderWorkspaceShellRouteActionInput<TRoute>) => ReactNode;
   routes: {
@@ -49,56 +51,62 @@ export interface WorkspaceShellSignedInDashboardPageProps<TRoute> {
 }
 
 export function WorkspaceShellSignedInDashboardPage<TRoute>({
+  locale,
   personalWorkspaceName,
   renderRouteAction,
   routes,
   teamCount,
 }: WorkspaceShellSignedInDashboardPageProps<TRoute>) {
+  const resource = getWorkspaceShellResource(locale);
+  const joinedTeamsTitleTemplate = resource.pages.dashboard.actions.teamListTitle;
   const actions = [
     {
-      body: "Open your personal task list as its own focused page.",
-      eyebrow: "My workspace",
+      body: resource.pages.dashboard.actions.personalWorkspaceBody,
+      eyebrow: resource.destinations.personalWorkspace.label,
       route: routes.personalWorkspace,
-      title: personalWorkspaceName ?? "Personal workspace",
+      title:
+        personalWorkspaceName ?? resource.pages.dashboard.actions.personalWorkspaceFallbackTitle,
     },
     {
-      body: "Browse current memberships and jump to a dedicated team detail page.",
-      eyebrow: "Joined teams",
+      body: resource.pages.dashboard.actions.teamListBody,
+      eyebrow: resource.navigation.joinedTeams,
       route: routes.teamList,
-      title: `${teamCount} joined team${teamCount === 1 ? "" : "s"}`,
+      title: joinedTeamsTitleTemplate
+        .replace("{{count}}", String(teamCount))
+        .replace("{{plural}}", teamCount === 1 ? "" : "s"),
     },
     {
-      body: "Use a dedicated join surface instead of layering flows into one workspace screen.",
-      eyebrow: "Join team",
+      body: resource.pages.dashboard.actions.joinTeamBody,
+      eyebrow: resource.destinations.joinTeam.label,
       route: routes.joinTeam,
-      title: "Accept an invite",
+      title: resource.pages.dashboard.actions.joinTeamTitle,
     },
     {
-      body: "Create a team from its own page and continue into the resulting detail view.",
-      eyebrow: "Create team",
+      body: resource.pages.dashboard.actions.createTeamBody,
+      eyebrow: resource.destinations.createTeam.label,
       route: routes.createTeam,
-      title: "Start a shared workspace",
+      title: resource.pages.dashboard.actions.createTeamTitle,
     },
   ];
   const stats = [
     {
-      label: "My workspace",
-      value: personalWorkspaceName ?? "Ready",
+      label: resource.destinations.personalWorkspace.label,
+      value: personalWorkspaceName ?? resource.pages.dashboard.stats.personalWorkspaceFallback,
     },
     {
-      label: "Joined teams",
+      label: resource.navigation.joinedTeams,
       value: String(teamCount),
     },
     {
-      label: "Next focus",
-      value: "Join and create flows",
+      label: resource.pages.dashboard.stats.nextFocusLabel,
+      value: resource.pages.dashboard.stats.nextFocusValue,
     },
   ];
 
   return (
     <WorkspaceShellDashboardPage
       actions={actions as never}
-      heroBody="Signed-in workspace navigation now lands on a dedicated dashboard so each destination can keep its own stable page boundary."
+      heroBody={resource.pages.dashboard.heroBody}
       renderActionCard={(action) =>
         renderRouteAction({
           children: (
@@ -119,6 +127,7 @@ export function WorkspaceShellSignedInDashboardPage<TRoute>({
 }
 
 export interface WorkspaceShellSignedInTeamListPageProps<TRoute> {
+  locale?: string | null;
   renderNavigationAction: (input: {
     className: string;
     label: string;
@@ -129,20 +138,25 @@ export interface WorkspaceShellSignedInTeamListPageProps<TRoute> {
 }
 
 export function WorkspaceShellSignedInTeamListPage<TRoute>({
+  locale,
   renderNavigationAction,
   renderRouteAction,
   teams,
 }: WorkspaceShellSignedInTeamListPageProps<TRoute>) {
+  const resource = getWorkspaceShellResource(locale);
+
   return (
     <WorkspaceShellTeamListPage
-      emptyStateBody="Create a team or redeem an invite to populate this list."
+      emptyStateBody={resource.pages.teamList.emptyBody}
+      emptyStateEyebrow={resource.pages.teamList.emptyEyebrow}
+      emptyStateTitle={resource.pages.teamList.emptyTitle}
       renderNavigationAction={renderNavigationAction}
       renderTeamCard={(team) =>
         renderRouteAction({
           children: (
             <WorkspaceShellRouteCard
-              body="Open the dedicated page for this shared workspace."
-              eyebrow="Team detail"
+              body={resource.pages.teamList.teamCardBody}
+              eyebrow={resource.destinations.teamDetail.label}
               title={team.name}
             />
           ),
@@ -152,7 +166,7 @@ export function WorkspaceShellSignedInTeamListPage<TRoute>({
         })
       }
       teams={teams as Array<WorkspaceShellSignedInTeam<WorkspaceShellRoute>>}
-      teamListBody="Open each shared workspace from its own dedicated destination."
+      teamListBody={resource.pages.teamList.body}
     />
   );
 }
@@ -161,6 +175,7 @@ export interface WorkspaceShellSignedInJoinTeamPageProps<TRoute> {
   feedback: WorkspaceShellJoinTeamFeedback | null;
   inputValue: string;
   isSubmitting: boolean;
+  locale?: string | null;
   onDismissFeedback: () => void;
   onInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -178,6 +193,7 @@ export function WorkspaceShellSignedInJoinTeamPage<TRoute>({
   feedback,
   inputValue,
   isSubmitting,
+  locale,
   onDismissFeedback,
   onInputChange,
   onSubmit,
@@ -186,17 +202,26 @@ export function WorkspaceShellSignedInJoinTeamPage<TRoute>({
   source = "manual",
   teamListRoute,
 }: WorkspaceShellSignedInJoinTeamPageProps<TRoute>) {
+  const resource = getWorkspaceShellResource(locale);
+
   return (
     <WorkspaceShellJoinTeamPage
       feedback={feedback}
-      heroBody="Open a shared invite link or paste the invite code directly. After a successful join, the shared shell takes you straight into the team detail page."
+      heroBody={resource.pages.joinTeam.heroBody}
       inputValue={inputValue}
-      inviteBody="Invite acceptance stays inside the signed-in flow so the shared workspace appears in dashboard and team navigation as soon as membership is granted."
-      inviteEyebrow={source === "link" ? "Invite link opened" : "Invite code"}
+      inviteBody={resource.pages.joinTeam.inviteBody}
+      inviteEyebrow={
+        source === "link"
+          ? resource.pages.joinTeam.inviteEyebrowLink
+          : resource.pages.joinTeam.inviteEyebrowManual
+      }
       inviteHeading={
-        source === "link" ? "We prefilled the invite for you." : "Paste an invite to continue."
+        source === "link"
+          ? resource.pages.joinTeam.inviteHeadingLink
+          : resource.pages.joinTeam.inviteHeadingManual
       }
       isSubmitting={isSubmitting}
+      locale={locale}
       onDismissFeedback={onDismissFeedback}
       onInputChange={onInputChange}
       onSubmit={onSubmit}
@@ -204,14 +229,11 @@ export function WorkspaceShellSignedInJoinTeamPage<TRoute>({
       trailingContent={
         renderRouteAction && teamListRoute ? (
           <section className="join-team-aside">
-            <p className="page-eyebrow">What happens next</p>
-            <h3>Membership sync keeps the workspace list current.</h3>
-            <p>
-              The join action redeems the invite, refreshes your joined teams, and lands you in the
-              target workspace while keeping your personal workspace available in navigation.
-            </p>
+            <p className="page-eyebrow">{resource.pages.joinTeam.nextEyebrow}</p>
+            <h3>{resource.pages.joinTeam.nextTitle}</h3>
+            <p>{resource.pages.joinTeam.nextBody}</p>
             {renderRouteAction({
-              children: "Browse current teams",
+              children: resource.pages.joinTeam.browseTeams,
               className: "button-link button-link--muted",
               key: "browse-current-teams",
               route: teamListRoute,
@@ -226,6 +248,7 @@ export function WorkspaceShellSignedInJoinTeamPage<TRoute>({
 export interface WorkspaceShellSignedInCreateTeamPageProps {
   canManageTodos: boolean;
   draftTeamName: string;
+  locale?: string | null;
   onDraftTeamNameChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   renderNavigationAction: (input: {
@@ -238,6 +261,7 @@ export interface WorkspaceShellSignedInCreateTeamPageProps {
 export function WorkspaceShellSignedInCreateTeamPage({
   canManageTodos,
   draftTeamName,
+  locale,
   onDraftTeamNameChange,
   onSubmit,
   renderNavigationAction,
@@ -246,6 +270,7 @@ export function WorkspaceShellSignedInCreateTeamPage({
     <WorkspaceShellCreateTeamPage
       canManageTodos={canManageTodos}
       draftTeamName={draftTeamName}
+      locale={locale}
       onDraftTeamNameChange={onDraftTeamNameChange}
       onSubmit={onSubmit}
       renderNavigationAction={renderNavigationAction}
@@ -296,6 +321,7 @@ export interface WorkspaceShellSignedInWorkspacePageProps<
   };
   hasAnyTodos: boolean;
   layout: "combined" | "sectioned";
+  locale?: string | null;
   onCancelEditing: () => void;
   onCreateSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDateViewChange: (view: WorkspaceDateView) => void;
@@ -688,6 +714,7 @@ export function WorkspaceShellSignedInWorkspacePage<
   emptyStateCopy,
   hasAnyTodos,
   layout,
+  locale,
   onCancelEditing,
   onCreateSubmit,
   onDateViewChange,
@@ -717,6 +744,7 @@ export function WorkspaceShellSignedInWorkspacePage<
   todoTitleError,
   workspace,
 }: WorkspaceShellSignedInWorkspacePageProps<TRoute, TTodo, TSelectedTodo>) {
+  const resource = getWorkspaceShellResource(locale);
   const activeSection =
     workspace?.kind === "team"
       ? section === "date" || section === "invite"
@@ -761,7 +789,11 @@ export function WorkspaceShellSignedInWorkspacePage<
     <>
       <WorkspaceShellWorkspaceHeader
         introBody={getWorkspaceIntroBody(workspace)}
-        introEyebrow={workspace?.kind === "team" ? "Team detail" : "My workspace"}
+        introEyebrow={
+          workspace?.kind === "team"
+            ? resource.destinations.teamDetail.label
+            : resource.destinations.personalWorkspace.label
+        }
         introTitle={routeTitle}
         renderNavigationAction={renderNavigationAction}
         workspace={workspace}

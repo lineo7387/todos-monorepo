@@ -1,10 +1,12 @@
 import type { FormEvent, ReactNode } from "react";
 
 import type { WorkspaceShellRoute } from "./index.ts";
+import { getWorkspaceShellResource } from "./index.ts";
 
 export interface WorkspaceShellCreateTeamPageProps {
   canManageTodos: boolean;
   draftTeamName: string;
+  locale?: string | null;
   onDraftTeamNameChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   renderNavigationAction: (input: {
@@ -17,10 +19,13 @@ export interface WorkspaceShellCreateTeamPageProps {
 export function WorkspaceShellCreateTeamPage({
   canManageTodos,
   draftTeamName,
+  locale,
   onDraftTeamNameChange,
   onSubmit,
   renderNavigationAction,
 }: WorkspaceShellCreateTeamPageProps) {
+  const resource = getWorkspaceShellResource(locale);
+
   return (
     <>
       <section className="page-intro">
@@ -36,12 +41,12 @@ export function WorkspaceShellCreateTeamPage({
         <div className="page-intro__actions">
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Dashboard",
+            label: resource.destinations.dashboard.label,
             route: { name: "dashboard" },
           })}
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Teams",
+            label: resource.destinations.teamList.label,
             route: { name: "team-list" },
           })}
         </div>

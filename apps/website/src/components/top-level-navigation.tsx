@@ -10,6 +10,7 @@ import { getWebsiteRouteHref, type WebsiteRoute } from "../routing/routes.ts";
 
 export interface TopLevelNavigationProps {
   currentRoute: WebsiteRoute;
+  locale?: string | null;
   onNavigate: (route: WebsiteRoute) => void;
   personalWorkspace: WebsiteWorkspace | null;
   teams: WebsiteWorkspace[];
@@ -41,51 +42,53 @@ function RouteLink({ children, className, onNavigate, route }: RouteLinkProps) {
 
 export function TopLevelNavigation({
   currentRoute,
+  locale,
   onNavigate,
   personalWorkspace,
   teams,
 }: TopLevelNavigationProps) {
-  const resource = getWorkspaceShellResource();
+  const resource = getWorkspaceShellResource(locale);
 
   return (
     <WorkspaceTopNavigation<WebsiteRoute>
-      emptyTeamsCopy="No joined teams yet. Create one or accept an invite."
-      joinedTeamsCopy="Jump directly into a dedicated team detail page from anywhere in the signed-in flow."
+      emptyTeamsCopy={resource.navigation.emptyTeams}
+      joinedTeamsCopy={resource.navigation.joinedTeamsBody}
       joinedTeamsLabel={resource.navigation.joinedTeams}
-      navigationBody="The app now keeps the workspace model route-driven, with joined teams available as dedicated destinations."
+      navigationBody={resource.navigation.body}
       navigationHeading={resource.navigation.heading}
-      navigationSubtitle="Move between dashboard, your workspace, and team actions."
+      navigationSubtitle={resource.navigation.subtitle}
       primaryItems={[
         {
-          description: "Overview and quick entry points",
+          description: resource.navigation.primaryItems.dashboard,
           isActive: isWorkspaceRouteActive(currentRoute, { name: "dashboard" }),
           key: "dashboard",
           label: resource.destinations.dashboard.label,
           route: { name: "dashboard" } satisfies WebsiteRoute,
         },
         {
-          description: personalWorkspace?.name ?? "Personal tasks",
+          description:
+            personalWorkspace?.name ?? resource.navigation.primaryItems.personalWorkspace,
           isActive: isWorkspaceRouteActive(currentRoute, { name: "personal-workspace" }),
           key: "personal-workspace",
           label: resource.destinations.personalWorkspace.label,
           route: { name: "personal-workspace" } satisfies WebsiteRoute,
         },
         {
-          description: `${teams.length} team${teams.length === 1 ? "" : "s"}`,
+          description: resource.navigation.primaryItems.teamList,
           isActive: isWorkspaceRouteActive(currentRoute, { name: "team-list" }),
           key: "team-list",
-          label: "Joined teams",
+          label: resource.destinations.teamList.label,
           route: { name: "team-list" } satisfies WebsiteRoute,
         },
         {
-          description: "Redeem an invite",
+          description: resource.navigation.primaryItems.joinTeam,
           isActive: isWorkspaceRouteActive(currentRoute, { name: "join-team" }),
           key: "join-team",
           label: resource.destinations.joinTeam.label,
           route: { name: "join-team" } satisfies WebsiteRoute,
         },
         {
-          description: "Start a shared workspace",
+          description: resource.navigation.primaryItems.createTeam,
           isActive: isWorkspaceRouteActive(currentRoute, { name: "create-team" }),
           key: "create-team",
           label: resource.destinations.createTeam.label,
@@ -97,6 +100,7 @@ export function TopLevelNavigation({
           {children}
         </RouteLink>
       )}
+      teamLabel={resource.navigation.teamLabel}
       teams={teams.map((team) => {
         const route = {
           name: "team-detail",

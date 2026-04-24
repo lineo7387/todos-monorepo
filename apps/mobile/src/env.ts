@@ -2,6 +2,7 @@ export interface MobileSupabaseEnv {
   url: string;
   anonKey: string;
   sessionStorageKey: string;
+  workspaceShellLocale: string;
 }
 
 function readRequiredEnv(
@@ -23,5 +24,6 @@ export function getMobileSupabaseEnv(): MobileSupabaseEnv {
     url: readRequiredEnv("EXPO_PUBLIC_SUPABASE_URL"),
     anonKey: readRequiredEnv("EXPO_PUBLIC_SUPABASE_ANON_KEY"),
     sessionStorageKey: "sb-todos-auth-mobile",
+    workspaceShellLocale: process.env.EXPO_PUBLIC_WORKSPACE_SHELL_LOCALE ?? "en",
   };
 }

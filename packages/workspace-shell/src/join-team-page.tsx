@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 
 import type { WorkspaceShellRoute } from "./index.ts";
+import { getWorkspaceShellResource } from "./index.ts";
 
 export interface WorkspaceShellJoinTeamFeedback {
   kind: "error" | "notice";
@@ -13,6 +14,7 @@ export interface WorkspaceShellJoinTeamPageProps {
   inputName?: string;
   inputValue: string;
   inviteHeading: string;
+  locale?: string | null;
   inviteEyebrow: string;
   inviteBody: string;
   isSubmitting: boolean;
@@ -33,6 +35,7 @@ export function WorkspaceShellJoinTeamPage({
   inputName,
   inputValue,
   inviteHeading,
+  locale,
   inviteEyebrow,
   inviteBody,
   isSubmitting,
@@ -42,6 +45,8 @@ export function WorkspaceShellJoinTeamPage({
   renderNavigationAction,
   trailingContent,
 }: WorkspaceShellJoinTeamPageProps) {
+  const resource = getWorkspaceShellResource(locale);
+
   return (
     <>
       <section className="page-intro">
@@ -54,12 +59,12 @@ export function WorkspaceShellJoinTeamPage({
         <div className="page-intro__actions">
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Dashboard",
+            label: resource.destinations.dashboard.label,
             route: { name: "dashboard" },
           })}
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Teams",
+            label: resource.destinations.teamList.label,
             route: { name: "team-list" },
           })}
         </div>
