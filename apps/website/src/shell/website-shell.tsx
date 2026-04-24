@@ -9,7 +9,9 @@ import {
 } from "todo-data";
 import {
   deriveWorkspaceTaskView,
+  getJoinInviteFailureFeedback,
   getJoinTeamSuccessOutcome,
+  getWorkspaceShellResource,
   getWorkspaceRouteTitle,
   resolveWorkspaceRouteEffect,
 } from "workspace-shell";
@@ -80,24 +82,26 @@ function createWebsiteBootstrap(): WebsiteBootstrap {
   }
 }
 
-function getEmptyStateCopy(workspace: WebsiteWorkspace | null) {
+function getEmptyStateCopy(workspace: WebsiteWorkspace | null, locale?: string | null) {
+  const resource = getWorkspaceShellResource(locale);
+
   if (!workspace) {
     return {
-      title: "Choose a workspace to begin.",
-      body: "Once a workspace is available, new tasks and refresh actions will target that scope.",
+      title: resource.pages.workspace.emptyNoWorkspaceTitle,
+      body: resource.pages.workspace.emptyNoWorkspaceBody,
     };
   }
 
   if (workspace.kind === "team") {
     return {
-      title: `Start the shared list for ${workspace.name}.`,
-      body: "New team tasks will persist in Supabase and become visible to every member.",
+      title: resource.pages.workspace.emptyTeamTitle.replace("{{workspaceName}}", workspace.name),
+      body: resource.pages.workspace.emptyTeamBody,
     };
   }
 
   return {
-    title: "Create your first synced todo.",
-    body: "New personal tasks will appear here and persist for this account across app restarts.",
+    title: resource.pages.workspace.emptyPersonalTitle,
+    body: resource.pages.workspace.emptyPersonalBody,
   };
 }
 
@@ -198,6 +202,7 @@ export function WebsiteAppShell() {
 
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
+  const shellResource = getWorkspaceShellResource(bootstrap.workspaceShellLocale);
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const personalWorkspace =
     viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
@@ -361,7 +366,7 @@ export function WebsiteAppShell() {
       await navigator.clipboard.writeText(value);
       setTeamInviteMessage(successMessage);
     } catch {
-      setTeamInviteMessage("Copy failed. You can still select the value and copy it manually.");
+      setTeamInviteMessage(shellResource.feedback.copyInviteFailure);
     }
   }
 
@@ -379,7 +384,12 @@ export function WebsiteAppShell() {
         setTeamInviteCode(invite.token);
         setTeamInviteLink(joinUrl.toString());
         setTeamInviteExpiresAt(invite.expiresAt);
-        setTeamInviteMessage("Invite ready to share.");
+        setTeamInviteMessage(
+          shellResource.feedback.createInviteReady.replace(
+            "{{joinSurface}}",
+            shellResource.destinations.joinTeam.label,
+          ),
+        );
       })
       .catch(() => {});
   }
@@ -405,16 +415,14 @@ export function WebsiteAppShell() {
       })
       .catch((error: unknown) => {
         const latestState = controller.getState();
-        const message =
-          latestState.lastError ??
-          (error instanceof Error && error.message.length > 0
-            ? error.message
-            : "We couldn't accept that invite. Check the code and try again.");
-
-        setJoinFeedback({
-          kind: latestState.lastErrorKind === "notice" ? "notice" : "error",
-          message,
-        });
+        setJoinFeedback(
+          getJoinInviteFailureFeedback({
+            error,
+            lastError: latestState.lastError,
+            lastErrorKind: latestState.lastErrorKind,
+            locale: bootstrap.workspaceShellLocale,
+          }),
+        );
       });
   }
 
@@ -543,7 +551,7 @@ export function WebsiteAppShell() {
               editingDueDate={editingDueDate}
               editingTitle={editingTitle}
               editingTodoId={editingTodoId}
-              emptyStateCopy={getEmptyStateCopy(pageWorkspace)}
+              emptyStateCopy={getEmptyStateCopy(pageWorkspace, bootstrap.workspaceShellLocale)}
               filteredTodos={filteredTodos}
               hasAnyTodos={viewModel.todos.length > 0}
               joinFeedback={joinFeedback}
@@ -566,12 +574,12 @@ export function WebsiteAppShell() {
               onNavigate={navigate}
               onCopyTeamInviteCode={() =>
                 void (teamInviteCode
-                  ? copyToClipboard(teamInviteCode, "Invite code copied.")
+                  ? copyToClipboard(teamInviteCode, shellResource.feedback.copyInviteCodeSuccess)
                   : Promise.resolve())
               }
               onCopyTeamInviteLink={() =>
                 void (teamInviteLink
-                  ? copyToClipboard(teamInviteLink, "Invite link copied.")
+                  ? copyToClipboard(teamInviteLink, shellResource.feedback.copyInviteLinkSuccess)
                   : Promise.resolve())
               }
               onSaveEdit={(event) => void handleSaveEdit(event)}

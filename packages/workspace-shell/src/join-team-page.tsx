@@ -51,8 +51,8 @@ export function WorkspaceShellJoinTeamPage({
     <>
       <section className="page-intro">
         <div>
-          <p className="page-eyebrow">Join team</p>
-          <h2>Join a shared workspace with an invite.</h2>
+          <p className="page-eyebrow">{resource.destinations.joinTeam.label}</p>
+          <h2>{resource.pages.joinTeam.inviteHeadingManual}</h2>
           <p>{heroBody}</p>
         </div>
 
@@ -84,26 +84,26 @@ export function WorkspaceShellJoinTeamPage({
             >
               <p>{feedback.message}</p>
               <button onClick={onDismissFeedback} type="button">
-                Dismiss
+                {resource.actions.dismiss}
               </button>
             </div>
           ) : null}
 
           <label className="join-team-panel__field">
-            <span>Invite code</span>
+            <span>{resource.fields.inviteCode}</span>
             <input
               autoCapitalize="none"
               autoCorrect="off"
               disabled={isSubmitting}
               name={inputName}
               onChange={(event) => onInputChange(event.currentTarget.value)}
-              placeholder="Paste invite code"
+              placeholder={resource.fields.inviteCodeOrLinkPlaceholder}
               value={inputValue}
             />
           </label>
 
           <button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Joining team..." : "Join team"}
+            {isSubmitting ? resource.actions.joiningTeam : resource.actions.joinTeam}
           </button>
         </form>
 

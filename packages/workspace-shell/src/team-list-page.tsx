@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { WorkspaceShellRoute } from "./index.ts";
+import { getWorkspaceShellResource } from "./index.ts";
 
 export interface WorkspaceShellTeamListPageTeam {
   id: string;
@@ -12,6 +13,7 @@ export interface WorkspaceShellTeamListPageProps {
   emptyStateBody: string;
   emptyStateEyebrow: string;
   emptyStateTitle: string;
+  locale?: string | null;
   renderNavigationAction: (input: {
     className: string;
     label: string;
@@ -26,29 +28,32 @@ export function WorkspaceShellTeamListPage({
   emptyStateBody,
   emptyStateEyebrow,
   emptyStateTitle,
+  locale,
   renderNavigationAction,
   renderTeamCard,
   teams,
   teamListBody,
 }: WorkspaceShellTeamListPageProps) {
+  const resource = getWorkspaceShellResource(locale);
+
   return (
     <>
       <section className="page-intro">
         <div>
-          <p className="page-eyebrow">Joined teams</p>
-          <h2>Team workspaces</h2>
+          <p className="page-eyebrow">{resource.navigation.joinedTeams}</p>
+          <h2>{resource.pages.teamList.heading}</h2>
           <p>{teamListBody}</p>
         </div>
 
         <div className="page-intro__actions">
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Dashboard",
+            label: resource.destinations.dashboard.label,
             route: { name: "dashboard" },
           })}
           {renderNavigationAction({
             className: "button-link",
-            label: "Create team",
+            label: resource.destinations.createTeam.label,
             route: { name: "create-team" },
           })}
         </div>

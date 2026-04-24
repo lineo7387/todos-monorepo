@@ -18,6 +18,7 @@ import {
   WorkspaceShellSignedInJoinTeamPage,
   WorkspaceShellSignedInTeamListPage,
   WorkspaceShellSignedInWorkspacePage,
+  getWorkspaceShellResource,
   workspaceShellPageIds,
 } from "workspace-shell";
 
@@ -119,36 +120,45 @@ function formatSelectedDateLabel(value: string): string {
   }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
-function getComposerPlaceholder(workspace: DesktopWorkspace | null): string {
+function getComposerPlaceholder(
+  workspace: DesktopWorkspace | null,
+  locale?: string | null,
+): string {
+  const resource = getWorkspaceShellResource(locale);
+
   if (!workspace) {
-    return "Select a workspace before adding a task";
+    return resource.pages.workspace.composerNoWorkspace;
   }
 
-  return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+  return workspace.kind === "team"
+    ? resource.pages.workspace.composerTeam
+    : resource.pages.workspace.composerPersonal;
 }
 
 function getCurrentDateValue(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
-function getEmptyStateCopy(workspace: DesktopWorkspace | null) {
+function getEmptyStateCopy(workspace: DesktopWorkspace | null, locale?: string | null) {
+  const resource = getWorkspaceShellResource(locale);
+
   if (!workspace) {
     return {
-      title: "Choose a workspace to begin.",
-      body: "Once a workspace is available, new tasks and refresh actions will target that scope.",
+      title: resource.pages.workspace.emptyNoWorkspaceTitle,
+      body: resource.pages.workspace.emptyNoWorkspaceBody,
     };
   }
 
   if (workspace.kind === "team") {
     return {
-      title: `Start the shared list for ${workspace.name}.`,
-      body: "New team tasks will persist in Supabase and become visible to every member.",
+      title: resource.pages.workspace.emptyTeamTitle.replace("{{workspaceName}}", workspace.name),
+      body: resource.pages.workspace.emptyTeamBody,
     };
   }
 
   return {
-    title: "Create your first synced todo.",
-    body: "New personal tasks will appear here and persist for this account across app restarts.",
+    title: resource.pages.workspace.emptyPersonalTitle,
+    body: resource.pages.workspace.emptyPersonalBody,
   };
 }
 
@@ -200,6 +210,7 @@ export function DesktopAppShell() {
 
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
+  const shellResource = getWorkspaceShellResource(bootstrap.workspaceShellLocale);
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const activeWorkspace = viewModel.activeWorkspace;
   const personalWorkspace =
@@ -218,7 +229,7 @@ export function DesktopAppShell() {
       : route.name === "team-detail"
         ? routedTeamWorkspace
         : activeWorkspace;
-  const emptyStateCopy = getEmptyStateCopy(pageWorkspace);
+  const emptyStateCopy = getEmptyStateCopy(pageWorkspace, bootstrap.workspaceShellLocale);
   const todayDateValue = getCurrentDateValue();
   const { filteredTodos, taskCounts, dateViewCounts, selectedDateTodos } = deriveDesktopTaskView(
     viewModel.todos,
@@ -445,6 +456,7 @@ export function DesktopAppShell() {
             error,
             lastError: latestState.lastError,
             lastErrorKind: latestState.lastErrorKind,
+            locale: bootstrap.workspaceShellLocale,
           }),
         );
       });
@@ -744,7 +756,10 @@ export function DesktopAppShell() {
                 [workspaceShellPageIds.personalWorkspace]: (
                   <WorkspaceShellSignedInWorkspacePage
                     canManageTodos={viewModel.canManageTodos}
-                    composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
+                    composerPlaceholder={getComposerPlaceholder(
+                      pageWorkspace,
+                      bootstrap.workspaceShellLocale,
+                    )}
                     dateView={dateView}
                     dateViewCounts={dateViewCounts}
                     draftDueDate={draftDueDate}
@@ -787,7 +802,7 @@ export function DesktopAppShell() {
                     )}
                     renderSelectedDateAction={(todo) => (
                       <button onClick={() => beginEditing(todo)} type="button">
-                        Edit
+                        {shellResource.actions.edit}
                       </button>
                     )}
                     routeTitle={getDesktopRouteTitle(
@@ -798,12 +813,12 @@ export function DesktopAppShell() {
                     sectionRoutes={[
                       {
                         isActive: personalWorkspaceSection === "tasks",
-                        label: "Tasks",
+                        label: shellResource.pages.workspace.sectionLabels.tasks,
                         route: { name: "personal-workspace", section: "tasks" },
                       },
                       {
                         isActive: personalWorkspaceSection === "date",
-                        label: "Date",
+                        label: shellResource.pages.workspace.sectionLabels.date,
                         route: { name: "personal-workspace", section: "date" },
                       },
                     ]}
@@ -821,7 +836,10 @@ export function DesktopAppShell() {
                 [workspaceShellPageIds.teamDetail]: (
                   <WorkspaceShellSignedInWorkspacePage
                     canManageTodos={viewModel.canManageTodos}
-                    composerPlaceholder={getComposerPlaceholder(pageWorkspace)}
+                    composerPlaceholder={getComposerPlaceholder(
+                      pageWorkspace,
+                      bootstrap.workspaceShellLocale,
+                    )}
                     dateView={dateView}
                     dateViewCounts={dateViewCounts}
                     draftDueDate={draftDueDate}
@@ -864,7 +882,7 @@ export function DesktopAppShell() {
                     )}
                     renderSelectedDateAction={(todo) => (
                       <button onClick={() => beginEditing(todo)} type="button">
-                        Edit
+                        {shellResource.actions.edit}
                       </button>
                     )}
                     routeTitle={getDesktopRouteTitle(
@@ -877,7 +895,7 @@ export function DesktopAppShell() {
                         ? [
                             {
                               isActive: teamDetailSection === "tasks",
-                              label: "Tasks",
+                              label: shellResource.pages.workspace.sectionLabels.tasks,
                               route: {
                                 name: "team-detail",
                                 teamId: route.teamId,
@@ -886,7 +904,7 @@ export function DesktopAppShell() {
                             },
                             {
                               isActive: teamDetailSection === "date",
-                              label: "Date",
+                              label: shellResource.pages.workspace.sectionLabels.date,
                               route: {
                                 name: "team-detail",
                                 teamId: route.teamId,
@@ -895,7 +913,7 @@ export function DesktopAppShell() {
                             },
                             {
                               isActive: teamDetailSection === "invite",
-                              label: "Invite",
+                              label: shellResource.pages.workspace.sectionLabels.invite,
                               route: {
                                 name: "team-detail",
                                 teamId: route.teamId,

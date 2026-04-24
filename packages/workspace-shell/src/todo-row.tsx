@@ -1,3 +1,5 @@
+import { getWorkspaceShellResource } from "./index.ts";
+
 export interface WorkspaceShellTodoRowTodo {
   completed: boolean;
   dueDate: string | null;
@@ -11,6 +13,7 @@ export interface WorkspaceShellTodoRowProps<TTodo extends WorkspaceShellTodoRowT
   onDelete: (todoId: string) => void;
   onStartEdit: (todo: TTodo) => void;
   onToggleComplete: (todo: TTodo) => void;
+  locale?: string | null;
   todo: TTodo;
 }
 
@@ -36,8 +39,10 @@ export function WorkspaceShellTodoRow<TTodo extends WorkspaceShellTodoRowTodo>({
   onDelete,
   onStartEdit,
   onToggleComplete,
+  locale,
   todo,
 }: WorkspaceShellTodoRowProps<TTodo>) {
+  const resource = getWorkspaceShellResource(locale);
   const isOptimistic = todo.id.startsWith("optimistic-");
 
   return (
@@ -54,16 +59,24 @@ export function WorkspaceShellTodoRow<TTodo extends WorkspaceShellTodoRowTodo>({
 
       <div className="todo-card__body">
         <div className="todo-card__meta">
-          <span className="todo-card__eyebrow">{isOptimistic ? "Syncing" : "Updated"}</span>
-          <span>{isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}</span>
-          {todo.dueDate ? <span>Due {formatDueDate(todo.dueDate)}</span> : null}
+          <span className="todo-card__eyebrow">
+            {isOptimistic ? resource.pages.todo.syncing : resource.pages.todo.updated}
+          </span>
+          <span>
+            {isOptimistic
+              ? resource.pages.todo.waitingForSupabase
+              : formatUpdatedAt(todo.updatedAt)}
+          </span>
+          {todo.dueDate ? (
+            <span>{resource.pages.todo.due.replace("{{date}}", formatDueDate(todo.dueDate))}</span>
+          ) : null}
         </div>
         <p>{todo.title}</p>
       </div>
 
       <div className="todo-card__actions">
         <button disabled={disabled} onClick={() => onStartEdit(todo)} type="button">
-          Edit
+          {resource.actions.edit}
         </button>
         <button
           className="danger"
@@ -71,7 +84,7 @@ export function WorkspaceShellTodoRow<TTodo extends WorkspaceShellTodoRowTodo>({
           onClick={() => onDelete(todo.id)}
           type="button"
         >
-          Delete
+          {resource.actions.delete}
         </button>
       </div>
     </li>

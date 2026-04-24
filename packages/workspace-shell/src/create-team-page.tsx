@@ -30,12 +30,9 @@ export function WorkspaceShellCreateTeamPage({
     <>
       <section className="page-intro">
         <div>
-          <p className="page-eyebrow">Create team</p>
-          <h2>Start a shared workspace from its own page.</h2>
-          <p>
-            Successful creation sends you straight into the new team detail destination so the
-            signed-in flow stays aligned across web and desktop.
-          </p>
+          <p className="page-eyebrow">{resource.destinations.createTeam.label}</p>
+          <h2>{resource.pages.createTeam.heading}</h2>
+          <p>{resource.pages.createTeam.body}</p>
         </div>
 
         <div className="page-intro__actions">
@@ -54,17 +51,17 @@ export function WorkspaceShellCreateTeamPage({
 
       <form className="standalone-form" onSubmit={onSubmit}>
         <label className="composer__field">
-          <span>Team name</span>
+          <span>{resource.fields.teamName}</span>
           <input
             disabled={!canManageTodos}
             onChange={(event) => onDraftTeamNameChange(event.currentTarget.value)}
-            placeholder="Product Ops"
+            placeholder={resource.fields.teamNamePlaceholder}
             value={draftTeamName}
           />
         </label>
 
         <button disabled={!canManageTodos} type="submit">
-          Create team
+          {resource.actions.createTeam}
         </button>
       </form>
     </>

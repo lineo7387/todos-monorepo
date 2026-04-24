@@ -110,6 +110,10 @@ export const workspaceShellTranslationKeys = {
     unavailableTeam: "workspace-shell.feedback.unavailableTeam",
     joinTeamSuccess: "workspace-shell.feedback.joinTeamSuccess",
     createInviteReady: "workspace-shell.feedback.createInviteReady",
+    joinInviteFailure: "workspace-shell.feedback.joinInviteFailure",
+    copyInviteCodeSuccess: "workspace-shell.feedback.copyInviteCodeSuccess",
+    copyInviteLinkSuccess: "workspace-shell.feedback.copyInviteLinkSuccess",
+    copyInviteFailure: "workspace-shell.feedback.copyInviteFailure",
   },
 } as const;
 
@@ -162,9 +166,45 @@ export interface WorkspaceShellResources {
     unavailableTeam: string;
     joinTeamSuccess: string;
     createInviteReady: string;
+    joinInviteFailure: string;
+    copyInviteCodeSuccess: string;
+    copyInviteLinkSuccess: string;
+    copyInviteFailure: string;
+  };
+  actions: {
+    addTask: string;
+    browseTeams: string;
+    cancel: string;
+    copyCode: string;
+    copyLink: string;
+    createInvite: string;
+    createTeam: string;
+    delete: string;
+    dismiss: string;
+    edit: string;
+    joinTeam: string;
+    joiningTeam: string;
+    refresh: string;
+    save: string;
+    signOut: string;
+  };
+  fields: {
+    dueDate: string;
+    dueDatePlaceholder: string;
+    editTask: string;
+    inviteCode: string;
+    inviteCodeOrLinkPlaceholder: string;
+    joinLink: string;
+    newTask: string;
+    selectedDate: string;
+    selectedDatePlaceholder: string;
+    teamName: string;
+    teamNamePlaceholder: string;
+    updateTaskTitlePlaceholder: string;
   };
   pages: {
     dashboard: {
+      heading: string;
       heroBody: string;
       actions: {
         personalWorkspaceBody: string;
@@ -184,9 +224,13 @@ export interface WorkspaceShellResources {
     };
     teamList: {
       body: string;
+      dashboardEmptyBody: string;
+      dashboardEmptyEyebrow: string;
+      dashboardEmptyTitle: string;
       emptyBody: string;
       emptyEyebrow: string;
       emptyTitle: string;
+      heading: string;
       teamCardBody: string;
     };
     joinTeam: {
@@ -200,6 +244,64 @@ export interface WorkspaceShellResources {
       nextEyebrow: string;
       nextTitle: string;
       browseTeams: string;
+    };
+    createTeam: {
+      body: string;
+      heading: string;
+      mobileBody: string;
+      mobileHeading: string;
+    };
+    workspace: {
+      allTeams: string;
+      composerNoWorkspace: string;
+      composerPersonal: string;
+      composerTeam: string;
+      datePanelBody: string;
+      datePanelHeading: string;
+      datePanelLabel: string;
+      emptyMatchBody: string;
+      emptyMatchEyebrow: string;
+      emptyMatchTitle: string;
+      emptyNoWorkspaceBody: string;
+      emptyNoWorkspaceEyebrow: string;
+      emptyNoWorkspaceTitle: string;
+      emptyPersonalBody: string;
+      emptyPersonalEyebrow: string;
+      emptyPersonalTitle: string;
+      emptyTeamBody: string;
+      emptyTeamEyebrow: string;
+      emptyTeamTitle: string;
+      filterPanelBody: string;
+      filterPanelHeading: string;
+      filterPanelLabel: string;
+      inviteExpires: string;
+      invitePanelBody: string;
+      invitePanelHeading: string;
+      invitePanelLabel: string;
+      noAvailableWorkspace: string;
+      noWorkspaceDescription: string;
+      noWorkspaceIntroBody: string;
+      personalIntroBody: string;
+      personalList: string;
+      personalWorkspaceBadge: string;
+      selectedDateBody: string;
+      selectedDateEmpty: string;
+      selectedDateLabel: string;
+      selectedDateSummary: string;
+      shareHint: string;
+      shareLabel: string;
+      sectionLabels: Record<WorkspaceShellTeamSection, string>;
+      taskFilterLabels: Record<WorkspaceTaskFilter, string>;
+      dateViewLabels: Record<WorkspaceDateView, string>;
+      teamDetail: string;
+      teamIntroBody: string;
+      teamWorkspaceBadge: string;
+    };
+    todo: {
+      due: string;
+      syncing: string;
+      updated: string;
+      waitingForSupabase: string;
     };
   };
 }
@@ -324,9 +426,45 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         "You can now work in {{teamName}}. My workspace stays available from {{navigationLabel}}.",
       createInviteReady:
         "Invite ready to share. Teammates can paste this code into the {{joinSurface}}.",
+      joinInviteFailure: "We couldn't accept that invite. Check the code and try again.",
+      copyInviteCodeSuccess: "Invite code copied.",
+      copyInviteLinkSuccess: "Invite link copied.",
+      copyInviteFailure: "Copy failed. You can still select the value and copy it manually.",
+    },
+    actions: {
+      addTask: "Add task",
+      browseTeams: "Browse current teams",
+      cancel: "Cancel",
+      copyCode: "Copy code",
+      copyLink: "Copy link",
+      createInvite: "Create invite",
+      createTeam: "Create team",
+      delete: "Delete",
+      dismiss: "Dismiss",
+      edit: "Edit",
+      joinTeam: "Join team",
+      joiningTeam: "Joining team...",
+      refresh: "Refresh",
+      save: "Save",
+      signOut: "Sign out",
+    },
+    fields: {
+      dueDate: "Due date",
+      dueDatePlaceholder: "Due date (YYYY-MM-DD)",
+      editTask: "Edit task",
+      inviteCode: "Invite code",
+      inviteCodeOrLinkPlaceholder: "Invite code or link",
+      joinLink: "Join link",
+      newTask: "New task",
+      selectedDate: "Selected date",
+      selectedDatePlaceholder: "Selected date (YYYY-MM-DD)",
+      teamName: "Team name",
+      teamNamePlaceholder: "Product Ops",
+      updateTaskTitlePlaceholder: "Update task title",
     },
     pages: {
       dashboard: {
+        heading: "Keep your workspaces moving from one place.",
         heroBody:
           "Signed-in workspace navigation now lands on a dedicated dashboard so each destination can keep its own stable page boundary.",
         actions: {
@@ -349,9 +487,14 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       },
       teamList: {
         body: "Open each shared workspace from its own dedicated destination.",
+        dashboardEmptyBody:
+          "The dedicated join team and create team screens are now part of the mobile shell.",
+        dashboardEmptyEyebrow: "No teams yet",
+        dashboardEmptyTitle: "Join or create a team from its own destination.",
         emptyBody: "Create a team or redeem an invite to populate this list.",
         emptyEyebrow: "No joined teams yet",
         emptyTitle: "Your teams will appear here.",
+        heading: "Team workspaces",
         teamCardBody: "Open the dedicated page for this shared workspace.",
       },
       joinTeam: {
@@ -368,6 +511,86 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         nextEyebrow: "What happens next",
         nextTitle: "Membership sync keeps the workspace list current.",
         browseTeams: "Browse current teams",
+      },
+      createTeam: {
+        body: "Successful creation sends you straight into the new team detail destination so the signed-in flow stays aligned across web and desktop.",
+        heading: "Start a shared workspace from its own page.",
+        mobileBody:
+          "Create a team from its own mobile destination, then continue directly into team detail.",
+        mobileHeading: "Create a shared workspace",
+      },
+      workspace: {
+        allTeams: "All teams",
+        composerNoWorkspace: "Select a workspace before adding a task",
+        composerPersonal: "Add a task for yourself",
+        composerTeam: "Add a task for this team",
+        datePanelBody: "Only tasks with a due date appear in date-based views for this workspace.",
+        datePanelHeading: "Browse dated tasks without turning this into a full calendar.",
+        datePanelLabel: "Date view",
+        emptyMatchBody:
+          "Switch task filters or date views to review the rest of this workspace. Date-based views only include tasks that already have a due date.",
+        emptyMatchEyebrow: "No matching tasks",
+        emptyMatchTitle: "{{taskFilter}} tasks in {{dateView}} are clear right now.",
+        emptyNoWorkspaceBody:
+          "Once a workspace is available, new tasks and refresh actions will target that scope.",
+        emptyNoWorkspaceEyebrow: "No workspace",
+        emptyNoWorkspaceTitle: "Choose a workspace to begin.",
+        emptyPersonalBody:
+          "New personal tasks will appear here and persist for this account across app restarts.",
+        emptyPersonalEyebrow: "No tasks yet",
+        emptyPersonalTitle: "Create your first synced todo.",
+        emptyTeamBody:
+          "New team tasks will persist in Supabase and become visible to every member.",
+        emptyTeamEyebrow: "Team workspace is empty",
+        emptyTeamTitle: "Start the shared list for {{workspaceName}}.",
+        filterPanelBody:
+          "Narrow this workspace to all, active, or completed tasks without changing shared state.",
+        filterPanelHeading: "Focus this workspace by status.",
+        filterPanelLabel: "Task filter",
+        inviteExpires: "Invite expires {{expiresAt}}.",
+        invitePanelBody:
+          "Create a reusable invite for this team workspace without leaving the shared signed-in flow.",
+        invitePanelHeading: "Generate a reusable invite for {{workspaceName}}.",
+        invitePanelLabel: "Invite teammates",
+        noAvailableWorkspace: "No workspace available",
+        noWorkspaceDescription: "No personal or team workspace is available for this account yet.",
+        noWorkspaceIntroBody: "We could not resolve the workspace from the current route.",
+        personalIntroBody:
+          "These tasks belong to your personal workspace and follow your account across clients.",
+        personalList: "Personal list",
+        personalWorkspaceBadge: "Personal workspace",
+        selectedDateBody:
+          "View tasks due on {{selectedDateLabel}} for this workspace. This day view follows the current {{taskFilter}} filter and only includes tasks that already have a due date.",
+        selectedDateEmpty: "No {{taskFilter}} tasks are due on this day.",
+        selectedDateLabel: "Selected day",
+        selectedDateSummary: "{{count}} task{{plural}}",
+        shareHint:
+          "Share this code in the join team flow so new members land on the same team detail page.",
+        shareLabel: "How to share",
+        sectionLabels: {
+          tasks: "Tasks",
+          date: "Date",
+          invite: "Invite",
+        },
+        taskFilterLabels: {
+          all: "All",
+          active: "Active",
+          completed: "Completed",
+        },
+        dateViewLabels: {
+          all: "All tasks",
+          "due-today": "Due today",
+          upcoming: "Upcoming",
+        },
+        teamDetail: "Team detail",
+        teamIntroBody: "Shared tasks stay in sync for every member of this team workspace.",
+        teamWorkspaceBadge: "Team workspace",
+      },
+      todo: {
+        due: "Due {{date}}",
+        syncing: "Syncing",
+        updated: "Updated",
+        waitingForSupabase: "Waiting for Supabase",
       },
     },
   },
@@ -418,9 +641,45 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       joinTeamSuccess:
         "你现在可以在 {{teamName}} 中协作。你仍可从 {{navigationLabel}} 进入我的工作区。",
       createInviteReady: "邀请已准备好分享。队友可以在 {{joinSurface}} 中粘贴这段邀请码。",
+      joinInviteFailure: "无法接受该邀请。请检查邀请码后重试。",
+      copyInviteCodeSuccess: "邀请码已复制。",
+      copyInviteLinkSuccess: "邀请链接已复制。",
+      copyInviteFailure: "复制失败。你仍可以手动选择并复制该值。",
+    },
+    actions: {
+      addTask: "添加任务",
+      browseTeams: "浏览当前团队",
+      cancel: "取消",
+      copyCode: "复制邀请码",
+      copyLink: "复制链接",
+      createInvite: "创建邀请",
+      createTeam: "创建团队",
+      delete: "删除",
+      dismiss: "关闭",
+      edit: "编辑",
+      joinTeam: "加入团队",
+      joiningTeam: "正在加入团队...",
+      refresh: "刷新",
+      save: "保存",
+      signOut: "退出登录",
+    },
+    fields: {
+      dueDate: "截止日期",
+      dueDatePlaceholder: "截止日期 (YYYY-MM-DD)",
+      editTask: "编辑任务",
+      inviteCode: "邀请码",
+      inviteCodeOrLinkPlaceholder: "邀请码或链接",
+      joinLink: "加入链接",
+      newTask: "新任务",
+      selectedDate: "选中日期",
+      selectedDatePlaceholder: "选中日期 (YYYY-MM-DD)",
+      teamName: "团队名称",
+      teamNamePlaceholder: "产品运营",
+      updateTaskTitlePlaceholder: "更新任务标题",
     },
     pages: {
       dashboard: {
+        heading: "从一个地方推进所有工作区。",
         heroBody: "已登录的工作区导航会先进入专用仪表盘，让每个目的地都有稳定的页面边界。",
         actions: {
           personalWorkspaceBody: "打开专用的个人任务列表页面。",
@@ -440,9 +699,13 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       },
       teamList: {
         body: "从专用目的地打开每个共享工作区。",
+        dashboardEmptyBody: "专用加入团队和创建团队屏幕现在已经属于移动端 shell。",
+        dashboardEmptyEyebrow: "还没有团队",
+        dashboardEmptyTitle: "从专用目的地加入或创建团队。",
         emptyBody: "创建团队或兑换邀请后，这里会出现团队列表。",
         emptyEyebrow: "还没有加入团队",
         emptyTitle: "你的团队会显示在这里。",
+        heading: "团队工作区",
         teamCardBody: "打开这个共享工作区的专用页面。",
       },
       joinTeam: {
@@ -459,6 +722,78 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         nextEyebrow: "接下来",
         nextTitle: "成员同步会保持工作区列表最新。",
         browseTeams: "浏览当前团队",
+      },
+      createTeam: {
+        body: "创建成功后会直接进入新团队详情目的地，让 web 和 desktop 的已登录流程保持一致。",
+        heading: "从专用页面开始共享工作区。",
+        mobileBody: "从专用移动端目的地创建团队，然后直接进入团队详情。",
+        mobileHeading: "创建共享工作区",
+      },
+      workspace: {
+        allTeams: "所有团队",
+        composerNoWorkspace: "先选择工作区再添加任务",
+        composerPersonal: "为自己添加任务",
+        composerTeam: "为这个团队添加任务",
+        datePanelBody: "只有带截止日期的任务会出现在该工作区的日期视图中。",
+        datePanelHeading: "浏览带日期的任务，但不把它扩展成完整日历。",
+        datePanelLabel: "日期视图",
+        emptyMatchBody:
+          "切换任务筛选或日期视图以查看该工作区的其他内容。日期视图只包含已经设置截止日期的任务。",
+        emptyMatchEyebrow: "没有匹配任务",
+        emptyMatchTitle: "{{dateView}} 中的 {{taskFilter}}任务当前已清空。",
+        emptyNoWorkspaceBody: "工作区可用后，新任务和刷新操作会作用于该范围。",
+        emptyNoWorkspaceEyebrow: "没有工作区",
+        emptyNoWorkspaceTitle: "选择一个工作区开始。",
+        emptyPersonalBody: "新的个人任务会显示在这里，并在应用重启后继续保留在该账号下。",
+        emptyPersonalEyebrow: "还没有任务",
+        emptyPersonalTitle: "创建你的第一个同步待办。",
+        emptyTeamBody: "新的团队任务会保存到 Supabase，并对每个成员可见。",
+        emptyTeamEyebrow: "团队工作区为空",
+        emptyTeamTitle: "开始 {{workspaceName}} 的共享列表。",
+        filterPanelBody: "按全部、进行中或已完成任务聚焦该工作区，不改变共享状态。",
+        filterPanelHeading: "按状态聚焦该工作区。",
+        filterPanelLabel: "任务筛选",
+        inviteExpires: "邀请过期时间 {{expiresAt}}。",
+        invitePanelBody: "在不离开共享已登录流程的情况下，为这个团队工作区创建可复用邀请。",
+        invitePanelHeading: "为 {{workspaceName}} 生成可复用邀请。",
+        invitePanelLabel: "邀请队友",
+        noAvailableWorkspace: "没有可用工作区",
+        noWorkspaceDescription: "该账号还没有可用的个人或团队工作区。",
+        noWorkspaceIntroBody: "无法从当前路由解析工作区。",
+        personalIntroBody: "这些任务属于你的个人工作区，并会随账号跨客户端同步。",
+        personalList: "个人列表",
+        personalWorkspaceBadge: "个人工作区",
+        selectedDateBody:
+          "查看该工作区在 {{selectedDateLabel}} 截止的任务。这个日期视图会沿用当前 {{taskFilter}} 筛选，并且只包含已经设置截止日期的任务。",
+        selectedDateEmpty: "这一天没有截止的{{taskFilter}}任务。",
+        selectedDateLabel: "选中日期",
+        selectedDateSummary: "{{count}} 个任务",
+        shareHint: "在加入团队流程中分享这段邀请码，新成员会进入同一个团队详情页。",
+        shareLabel: "如何分享",
+        sectionLabels: {
+          tasks: "任务",
+          date: "日期",
+          invite: "邀请",
+        },
+        taskFilterLabels: {
+          all: "全部",
+          active: "进行中",
+          completed: "已完成",
+        },
+        dateViewLabels: {
+          all: "所有任务",
+          "due-today": "今天到期",
+          upcoming: "即将到期",
+        },
+        teamDetail: "团队详情",
+        teamIntroBody: "共享任务会为这个团队工作区的每个成员保持同步。",
+        teamWorkspaceBadge: "团队工作区",
+      },
+      todo: {
+        due: "截止 {{date}}",
+        syncing: "同步中",
+        updated: "已更新",
+        waitingForSupabase: "等待 Supabase",
       },
     },
   },
@@ -594,6 +929,7 @@ type JoinInviteFailureInput = {
   error: unknown;
   lastError: string | null;
   lastErrorKind: string | null;
+  locale?: string | null;
 };
 
 function interpolateTemplate(template: string, values: Record<string, string>): string {
@@ -942,12 +1278,14 @@ export function getJoinTeamSuccessOutcome<TWorkspace extends WorkspaceSummary>(
 }
 
 export function getJoinInviteFailureFeedback(input: JoinInviteFailureInput) {
+  const resource = getWorkspaceShellResource(input.locale);
+
   return {
     kind: input.lastErrorKind === "notice" ? "notice" : "error",
     message:
       input.lastError ??
       (input.error instanceof Error && input.error.message.length > 0
         ? input.error.message
-        : "We couldn't accept that invite. Check the code and try again."),
+        : resource.feedback.joinInviteFailure),
   } as const;
 }

@@ -25,3 +25,5 @@ dist-ssr
 
 # AI agent worktrees
 .claude/worktrees/
+.codex/skills/sanction-minimal-closure/
+.codex/skills/sanction-workspace-shell-continue/

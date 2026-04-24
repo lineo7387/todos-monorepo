@@ -187,6 +187,11 @@ describe("workspace-shell route contract", () => {
     expect(getWorkspaceShellResource("zh").pages.teamList.emptyTitle).toBe(
       "你的团队会显示在这里。",
     );
+    expect(getWorkspaceShellResource("zh").actions.createInvite).toBe("创建邀请");
+    expect(getWorkspaceShellResource("zh").fields.dueDatePlaceholder).toBe("截止日期 (YYYY-MM-DD)");
+    expect(getWorkspaceShellResource("zh").pages.workspace.taskFilterLabels.active).toBe("进行中");
+    expect(getWorkspaceShellResource("zh").pages.workspace.sectionLabels.invite).toBe("邀请");
+    expect(getWorkspaceShellResource("zh").pages.todo.waitingForSupabase).toBe("等待 Supabase");
     expect(normalizeWorkspaceShellLocale("en-US")).toBe("en");
   });
 });

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import type { FormEvent } from "react";
 import type { TodoAppState } from "todo-app";
 import {
+  getWorkspaceShellResource,
   getWorkspaceRouteTitle,
   WorkspaceShellSignedInCreateTeamPage,
   WorkspaceShellSignedInDashboardPage,
@@ -22,12 +23,19 @@ const websiteSignedInRoutePaths = Object.fromEntries(
   getWebsiteSignedInRoutePatterns().map((routePattern) => [routePattern.key, routePattern.path]),
 ) as Record<ReturnType<typeof getWebsiteSignedInRoutePatterns>[number]["key"], string>;
 
-function getComposerPlaceholder(workspace: WebsiteWorkspace | null): string {
+function getComposerPlaceholder(
+  workspace: WebsiteWorkspace | null,
+  locale?: string | null,
+): string {
+  const resource = getWorkspaceShellResource(locale);
+
   if (!workspace) {
-    return "Select a workspace before adding a task";
+    return resource.pages.workspace.composerNoWorkspace;
   }
 
-  return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+  return workspace.kind === "team"
+    ? resource.pages.workspace.composerTeam
+    : resource.pages.workspace.composerPersonal;
 }
 
 export interface WebsiteSignedInRoutesProps {
@@ -179,7 +187,7 @@ export function WebsiteSignedInRoutes({
         element={
           <WorkspaceShellSignedInWorkspacePage
             canManageTodos={canManageTodos}
-            composerPlaceholder={getComposerPlaceholder(personalWorkspace)}
+            composerPlaceholder={getComposerPlaceholder(personalWorkspace, locale)}
             dateView={dateView}
             dateViewCounts={dateViewCounts}
             draftDueDate={draftDueDate}
@@ -263,7 +271,7 @@ export function WebsiteSignedInRoutes({
         element={
           <WorkspaceShellSignedInWorkspacePage
             canManageTodos={canManageTodos}
-            composerPlaceholder={getComposerPlaceholder(routedTeamWorkspace)}
+            composerPlaceholder={getComposerPlaceholder(routedTeamWorkspace, locale)}
             dateView={dateView}
             dateViewCounts={dateViewCounts}
             draftDueDate={draftDueDate}

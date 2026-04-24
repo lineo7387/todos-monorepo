@@ -68,4 +68,18 @@ describe("getJoinInviteFailureFeedback", () => {
       message: "That invite is no longer active.",
     });
   });
+
+  test("uses shared localized fallback copy when no controller or thrown message is available", () => {
+    expect(
+      getJoinInviteFailureFeedback({
+        error: {},
+        lastError: null,
+        lastErrorKind: null,
+        locale: "zh-CN",
+      }),
+    ).toEqual({
+      kind: "error",
+      message: "无法接受该邀请。请检查邀请码后重试。",
+    });
+  });
 });

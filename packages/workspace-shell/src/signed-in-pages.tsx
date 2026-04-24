@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 
 import type {
+  WorkspaceShellResources,
   WorkspaceDateView,
   WorkspaceTaskFilter,
   WorkspaceShellRoute,
@@ -106,7 +107,9 @@ export function WorkspaceShellSignedInDashboardPage<TRoute>({
   return (
     <WorkspaceShellDashboardPage
       actions={actions as never}
+      eyebrow={resource.destinations.dashboard.label}
       heroBody={resource.pages.dashboard.heroBody}
+      heading={resource.pages.dashboard.heading}
       renderActionCard={(action) =>
         renderRouteAction({
           children: (
@@ -150,6 +153,7 @@ export function WorkspaceShellSignedInTeamListPage<TRoute>({
       emptyStateBody={resource.pages.teamList.emptyBody}
       emptyStateEyebrow={resource.pages.teamList.emptyEyebrow}
       emptyStateTitle={resource.pages.teamList.emptyTitle}
+      locale={locale}
       renderNavigationAction={renderNavigationAction}
       renderTeamCard={(team) =>
         renderRouteAction({
@@ -374,36 +378,28 @@ function formatDueDate(value: string): string {
   }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
-function getTaskFilterLabel(filter: WorkspaceTaskFilter): string {
-  switch (filter) {
-    case "active":
-      return "Active";
-    case "completed":
-      return "Completed";
-    default:
-      return "All";
-  }
+function getTaskFilterLabel(
+  filter: WorkspaceTaskFilter,
+  resource: WorkspaceShellResources,
+): string {
+  return resource.pages.workspace.taskFilterLabels[filter];
 }
 
-function getDateViewLabel(view: WorkspaceDateView): string {
-  switch (view) {
-    case "due-today":
-      return "Due today";
-    case "upcoming":
-      return "Upcoming";
-    default:
-      return "All tasks";
-  }
+function getDateViewLabel(view: WorkspaceDateView, resource: WorkspaceShellResources): string {
+  return resource.pages.workspace.dateViewLabels[view];
 }
 
-function getWorkspaceIntroBody(workspace: WorkspaceShellHeaderWorkspace | null): string {
+function getWorkspaceIntroBody(
+  workspace: WorkspaceShellHeaderWorkspace | null,
+  resource: WorkspaceShellResources,
+): string {
   if (!workspace) {
-    return "We could not resolve the workspace from the current route.";
+    return resource.pages.workspace.noWorkspaceIntroBody;
   }
 
   return workspace.kind === "team"
-    ? "Shared tasks stay in sync for every member of this team workspace."
-    : "These tasks belong to your personal workspace and follow your account across clients.";
+    ? resource.pages.workspace.teamIntroBody
+    : resource.pages.workspace.personalIntroBody;
 }
 
 function renderWorkspaceEmptyState(
@@ -414,6 +410,7 @@ function renderWorkspaceEmptyState(
     title: string;
   },
   hasAnyTodos: boolean,
+  resource: WorkspaceShellResources,
   workspace: WorkspaceShellHeaderWorkspace | null,
   todosLength: number,
 ) {
@@ -421,7 +418,9 @@ function renderWorkspaceEmptyState(
     return (
       <section className="empty-state">
         <p className="empty-state__eyebrow">
-          {workspace?.kind === "team" ? "Team workspace is empty" : "No tasks yet"}
+          {workspace?.kind === "team"
+            ? resource.pages.workspace.emptyTeamEyebrow
+            : resource.pages.workspace.emptyPersonalEyebrow}
         </p>
         <h3>{emptyStateCopy.title}</h3>
         <p>{emptyStateCopy.body}</p>
@@ -432,14 +431,13 @@ function renderWorkspaceEmptyState(
   if (todosLength === 0) {
     return (
       <section className="empty-state">
-        <p className="empty-state__eyebrow">No matching tasks</p>
+        <p className="empty-state__eyebrow">{resource.pages.workspace.emptyMatchEyebrow}</p>
         <h3>
-          {activeTaskFilterLabel} tasks in {activeDateViewLabel.toLowerCase()} are clear right now.
+          {resource.pages.workspace.emptyMatchTitle
+            .replace("{{taskFilter}}", activeTaskFilterLabel)
+            .replace("{{dateView}}", activeDateViewLabel.toLowerCase())}
         </h3>
-        <p>
-          Switch task filters or date views to review the rest of this workspace. Date-based views
-          only include tasks that already have a due date.
-        </p>
+        <p>{resource.pages.workspace.emptyMatchBody}</p>
       </section>
     );
   }
@@ -448,9 +446,11 @@ function renderWorkspaceEmptyState(
 }
 
 function WorkspaceShellSectionNavigation<TRoute>({
+  ariaLabel,
   onNavigate,
   routes,
 }: {
+  ariaLabel: string;
   onNavigate: (route: TRoute) => void;
   routes: WorkspaceShellSectionRoute<TRoute>[];
 }) {
@@ -459,7 +459,7 @@ function WorkspaceShellSectionNavigation<TRoute>({
   }
 
   return (
-    <section className="workspace-subnav" aria-label="Workspace sections">
+    <section className="workspace-subnav" aria-label={ariaLabel}>
       {routes.map((entry) => (
         <button
           className={entry.isActive ? "is-active" : ""}
@@ -477,26 +477,30 @@ function WorkspaceShellSectionNavigation<TRoute>({
 function WorkspaceShellTaskFilterPanel({
   canManageTodos,
   onTaskFilterChange,
+  resource,
   taskCounts,
   taskFilter,
   todoCount,
 }: {
   canManageTodos: boolean;
   onTaskFilterChange: (filter: WorkspaceTaskFilter) => void;
+  resource: WorkspaceShellResources;
   taskCounts: Record<WorkspaceTaskFilter, number>;
   taskFilter: WorkspaceTaskFilter;
   todoCount: number;
 }) {
   return (
-    <section className="task-filter-panel" aria-label="Task filters">
+    <section className="task-filter-panel" aria-label={resource.pages.workspace.filterPanelLabel}>
       <div>
-        <p className="page-eyebrow">Task filter</p>
-        <h3>Focus this workspace by status.</h3>
-        <p>
-          Narrow this workspace to all, active, or completed tasks without changing shared state.
-        </p>
+        <p className="page-eyebrow">{resource.pages.workspace.filterPanelLabel}</p>
+        <h3>{resource.pages.workspace.filterPanelHeading}</h3>
+        <p>{resource.pages.workspace.filterPanelBody}</p>
       </div>
-      <div className="task-filter-group" aria-label="Filter tasks by status" role="tablist">
+      <div
+        className="task-filter-group"
+        aria-label={resource.pages.workspace.filterPanelLabel}
+        role="tablist"
+      >
         {(["all", "active", "completed"] as const).map((filter) => (
           <button
             aria-selected={taskFilter === filter}
@@ -507,7 +511,7 @@ function WorkspaceShellTaskFilterPanel({
             role="tab"
             type="button"
           >
-            <span>{getTaskFilterLabel(filter)}</span>
+            <span>{getTaskFilterLabel(filter, resource)}</span>
             <strong>{taskCounts[filter]}</strong>
           </button>
         ))}
@@ -521,22 +525,28 @@ function WorkspaceShellDateViewPanel({
   dateView,
   dateViewCounts,
   onDateViewChange,
+  resource,
   todoCount,
 }: {
   canManageTodos: boolean;
   dateView: WorkspaceDateView;
   dateViewCounts: Record<WorkspaceDateView, number>;
   onDateViewChange: (view: WorkspaceDateView) => void;
+  resource: WorkspaceShellResources;
   todoCount: number;
 }) {
   return (
-    <section className="task-filter-panel" aria-label="Date views">
+    <section className="task-filter-panel" aria-label={resource.pages.workspace.datePanelLabel}>
       <div>
-        <p className="page-eyebrow">Date view</p>
-        <h3>Browse dated tasks without turning this into a full calendar.</h3>
-        <p>Only tasks with a due date appear in date-based views for this workspace.</p>
+        <p className="page-eyebrow">{resource.pages.workspace.datePanelLabel}</p>
+        <h3>{resource.pages.workspace.datePanelHeading}</h3>
+        <p>{resource.pages.workspace.datePanelBody}</p>
       </div>
-      <div className="task-filter-group" aria-label="Filter tasks by due date" role="tablist">
+      <div
+        className="task-filter-group"
+        aria-label={resource.pages.workspace.datePanelLabel}
+        role="tablist"
+      >
         {(["all", "due-today", "upcoming"] as const).map((view) => (
           <button
             aria-selected={dateView === view}
@@ -547,7 +557,7 @@ function WorkspaceShellDateViewPanel({
             role="tab"
             type="button"
           >
-            <span>{getDateViewLabel(view)}</span>
+            <span>{getDateViewLabel(view, resource)}</span>
             <strong>{dateViewCounts[view]}</strong>
           </button>
         ))}
@@ -559,6 +569,7 @@ function WorkspaceShellDateViewPanel({
 function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDateTodo>({
   onSelectedDateChange,
   renderSelectedDateAction,
+  resource,
   selectedDate,
   selectedDateLabel,
   selectedDateTodos,
@@ -566,26 +577,30 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
 }: {
   onSelectedDateChange: (value: string) => void;
   renderSelectedDateAction?: (todo: TTodo) => ReactNode;
+  resource: WorkspaceShellResources;
   selectedDate: string;
   selectedDateLabel: string;
   selectedDateTodos: TTodo[];
   taskFilter: WorkspaceTaskFilter;
 }) {
   return (
-    <section className="selected-date-panel" aria-label="Selected date inspection">
+    <section
+      className="selected-date-panel"
+      aria-label={resource.pages.workspace.selectedDateLabel}
+    >
       <div className="selected-date-panel__header">
         <div>
-          <p className="page-eyebrow">Selected day</p>
-          <h3>Inspect one day without opening a full calendar.</h3>
+          <p className="page-eyebrow">{resource.pages.workspace.selectedDateLabel}</p>
+          <h3>{resource.pages.workspace.datePanelHeading}</h3>
           <p className="selected-date-panel__body">
-            View tasks due on {selectedDateLabel} for this workspace. This day view follows the
-            current {getTaskFilterLabel(taskFilter).toLowerCase()} filter and only includes tasks
-            that already have a due date.
+            {resource.pages.workspace.selectedDateBody
+              .replace("{{selectedDateLabel}}", selectedDateLabel)
+              .replace("{{taskFilter}}", getTaskFilterLabel(taskFilter, resource).toLowerCase())}
           </p>
         </div>
 
         <label className="composer__field selected-date-panel__field">
-          <span>Selected date</span>
+          <span>{resource.fields.selectedDate}</span>
           <input
             onChange={(event) => onSelectedDateChange(event.currentTarget.value)}
             type="date"
@@ -596,14 +611,19 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
 
       <div className="selected-date-panel__summary">
         <span>
-          {selectedDateTodos.length} task{selectedDateTodos.length === 1 ? "" : "s"}
+          {resource.pages.workspace.selectedDateSummary
+            .replace("{{count}}", String(selectedDateTodos.length))
+            .replace("{{plural}}", selectedDateTodos.length === 1 ? "" : "s")}
         </span>
         <strong>{selectedDateLabel}</strong>
       </div>
 
       {selectedDateTodos.length === 0 ? (
         <p className="selected-date-panel__empty">
-          No {getTaskFilterLabel(taskFilter).toLowerCase()} tasks are due on this day.
+          {resource.pages.workspace.selectedDateEmpty.replace(
+            "{{taskFilter}}",
+            getTaskFilterLabel(taskFilter, resource).toLowerCase(),
+          )}
         </p>
       ) : (
         <ul className="selected-date-list">
@@ -612,8 +632,14 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
               <div>
                 <p>{todo.title}</p>
                 <span>
-                  {todo.completed ? "Completed" : "Active"}
-                  {todo.dueDate ? `, due ${formatDueDate(todo.dueDate)}` : ""}
+                  {todo.completed
+                    ? resource.pages.workspace.taskFilterLabels.completed
+                    : resource.pages.workspace.taskFilterLabels.active}
+                  {todo.dueDate
+                    ? `, ${resource.pages.todo.due
+                        .replace("{{date}}", formatDueDate(todo.dueDate))
+                        .toLowerCase()}`
+                    : ""}
                 </span>
               </div>
               {renderSelectedDateAction ? renderSelectedDateAction(todo) : null}
@@ -628,25 +654,29 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
 function WorkspaceShellTeamInvitePanel({
   canManageTodos,
   invite,
+  resource,
   workspaceName,
 }: {
   canManageTodos: boolean;
   invite: WorkspaceShellTeamInvitePanelState;
+  resource: WorkspaceShellResources;
   workspaceName: string;
 }) {
   return (
     <section className="invite-panel">
       <div className="invite-panel__header">
         <div>
-          <p className="page-eyebrow">Invite teammates</p>
-          <h3>Generate a reusable invite for {workspaceName}.</h3>
-          <p className="invite-panel__body">
-            Create a reusable invite for this team workspace without leaving the shared signed-in
-            flow.
-          </p>
+          <p className="page-eyebrow">{resource.pages.workspace.invitePanelLabel}</p>
+          <h3>
+            {resource.pages.workspace.invitePanelHeading.replace(
+              "{{workspaceName}}",
+              workspaceName,
+            )}
+          </h3>
+          <p className="invite-panel__body">{resource.pages.workspace.invitePanelBody}</p>
         </div>
         <button disabled={!canManageTodos} onClick={invite.onCreateInvite} type="button">
-          Create invite
+          {resource.actions.createInvite}
         </button>
       </div>
 
@@ -655,12 +685,12 @@ function WorkspaceShellTeamInvitePanel({
       {invite.code ? (
         <div className="invite-results">
           <label className="composer__field">
-            <span>Invite code</span>
+            <span>{resource.fields.inviteCode}</span>
             <div className="inline-copy-field">
               <input readOnly value={invite.code} />
               {invite.onCopyCode ? (
                 <button onClick={invite.onCopyCode} type="button">
-                  Copy code
+                  {resource.actions.copyCode}
                 </button>
               ) : null}
             </div>
@@ -668,12 +698,12 @@ function WorkspaceShellTeamInvitePanel({
 
           {invite.link ? (
             <label className="composer__field">
-              <span>Join link</span>
+              <span>{resource.fields.joinLink}</span>
               <div className="inline-copy-field">
                 <input readOnly value={invite.link} />
                 {invite.onCopyLink ? (
                   <button onClick={invite.onCopyLink} type="button">
-                    Copy link
+                    {resource.actions.copyLink}
                   </button>
                 ) : null}
               </div>
@@ -681,15 +711,19 @@ function WorkspaceShellTeamInvitePanel({
           ) : null}
 
           <div className="workspace-summary__meta">
-            <span className="workspace-badge workspace-badge--team">How to share</span>
-            <span className="workspace-switcher__hint">
-              Share this code in the join team flow so new members land on the same team detail
-              page.
+            <span className="workspace-badge workspace-badge--team">
+              {resource.pages.workspace.shareLabel}
             </span>
+            <span className="workspace-switcher__hint">{resource.pages.workspace.shareHint}</span>
           </div>
 
           {invite.expiresAt ? (
-            <p className="invite-panel__meta">Invite expires {formatDateTime(invite.expiresAt)}.</p>
+            <p className="invite-panel__meta">
+              {resource.pages.workspace.inviteExpires.replace(
+                "{{expiresAt}}",
+                formatDateTime(invite.expiresAt),
+              )}
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -754,10 +788,11 @@ export function WorkspaceShellSignedInWorkspacePage<
         ? "date"
         : "tasks";
   const taskEmptyState = renderWorkspaceEmptyState(
-    getDateViewLabel(dateView),
-    getTaskFilterLabel(taskFilter),
+    getDateViewLabel(dateView, resource),
+    getTaskFilterLabel(taskFilter, resource),
     emptyStateCopy,
     hasAnyTodos,
+    resource,
     workspace,
     todos.length,
   );
@@ -771,6 +806,7 @@ export function WorkspaceShellSignedInWorkspacePage<
             onDelete={onDeleteTodo}
             onStartEdit={onStartEdit}
             onToggleComplete={onToggleComplete}
+            locale={locale}
             todo={todo}
           />
         ))}
@@ -781,6 +817,7 @@ export function WorkspaceShellSignedInWorkspacePage<
       <WorkspaceShellTeamInvitePanel
         canManageTodos={canManageTodos}
         invite={teamInvite}
+        resource={resource}
         workspaceName={workspace.name}
       />
     ) : null;
@@ -788,19 +825,21 @@ export function WorkspaceShellSignedInWorkspacePage<
   return (
     <>
       <WorkspaceShellWorkspaceHeader
-        introBody={getWorkspaceIntroBody(workspace)}
+        introBody={getWorkspaceIntroBody(workspace, resource)}
         introEyebrow={
           workspace?.kind === "team"
             ? resource.destinations.teamDetail.label
             : resource.destinations.personalWorkspace.label
         }
         introTitle={routeTitle}
+        locale={locale}
         renderNavigationAction={renderNavigationAction}
         workspace={workspace}
       />
 
       {layout === "sectioned" && sectionRoutes.length > 0 ? (
         <WorkspaceShellSectionNavigation
+          ariaLabel={resource.pages.workspace.filterPanelLabel}
           onNavigate={onSectionNavigate ?? (() => {})}
           routes={sectionRoutes}
         />
@@ -817,6 +856,7 @@ export function WorkspaceShellSignedInWorkspacePage<
             composerPlaceholder={composerPlaceholder}
             draftDueDate={draftDueDate}
             draftTitle={draftTitle}
+            locale={locale}
             onCreateSubmit={onCreateSubmit}
             onDraftDueDateChange={onDraftDueDateChange}
             onDraftTitleChange={onDraftTitleChange}
@@ -828,6 +868,7 @@ export function WorkspaceShellSignedInWorkspacePage<
               canManageTodos={canManageTodos}
               editingDueDate={editingDueDate}
               editingTitle={editingTitle}
+              locale={locale}
               onCancelEditing={onCancelEditing}
               onEditDueDateChange={onEditDueDateChange}
               onEditTitleChange={onEditTitleChange}
@@ -838,6 +879,7 @@ export function WorkspaceShellSignedInWorkspacePage<
           <WorkspaceShellTaskFilterPanel
             canManageTodos={canManageTodos}
             onTaskFilterChange={onTaskFilterChange}
+            resource={resource}
             taskCounts={taskCounts}
             taskFilter={taskFilter}
             todoCount={hasAnyTodos ? todos.length : 0}
@@ -850,11 +892,13 @@ export function WorkspaceShellSignedInWorkspacePage<
                 dateView={dateView}
                 dateViewCounts={dateViewCounts}
                 onDateViewChange={onDateViewChange}
+                resource={resource}
                 todoCount={hasAnyTodos ? todos.length : 0}
               />
               <WorkspaceShellSelectedDatePanel
                 onSelectedDateChange={onSelectedDateChange}
                 renderSelectedDateAction={renderSelectedDateAction}
+                resource={resource}
                 selectedDate={selectedDate}
                 selectedDateLabel={selectedDateLabel}
                 selectedDateTodos={selectedDateTodos}
@@ -872,6 +916,7 @@ export function WorkspaceShellSignedInWorkspacePage<
           <WorkspaceShellTaskFilterPanel
             canManageTodos={canManageTodos}
             onTaskFilterChange={onTaskFilterChange}
+            resource={resource}
             taskCounts={taskCounts}
             taskFilter={taskFilter}
             todoCount={hasAnyTodos ? todos.length : 0}
@@ -881,11 +926,13 @@ export function WorkspaceShellSignedInWorkspacePage<
             dateView={dateView}
             dateViewCounts={dateViewCounts}
             onDateViewChange={onDateViewChange}
+            resource={resource}
             todoCount={hasAnyTodos ? todos.length : 0}
           />
           <WorkspaceShellSelectedDatePanel
             onSelectedDateChange={onSelectedDateChange}
             renderSelectedDateAction={renderSelectedDateAction}
+            resource={resource}
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
             selectedDateTodos={selectedDateTodos}

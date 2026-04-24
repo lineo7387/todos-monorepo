@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, Switch, Text, TextInput, View } from "react-native";
 import type { TodoAppState } from "todo-app";
+import { getWorkspaceShellResource } from "workspace-shell";
 
 import { styles } from "../styles/mobile-shell.ts";
 
@@ -23,6 +24,7 @@ export function MobileTodoRow({
   onSaveEdit,
   onStartEdit,
   onToggleComplete,
+  locale,
   todo,
 }: {
   disabled: boolean;
@@ -32,8 +34,10 @@ export function MobileTodoRow({
   onSaveEdit: (todoId: string, title: string, dueDate: string) => void;
   onStartEdit: (todo: MobileTodoItem) => void;
   onToggleComplete: (todo: MobileTodoItem) => void;
+  locale?: string | null;
   todo: MobileTodoItem;
 }) {
+  const resource = getWorkspaceShellResource(locale);
   const [draft, setDraft] = useState(todo.title);
   const [draftDueDate, setDraftDueDate] = useState(todo.dueDate ?? "");
   const isOptimistic = todo.id.startsWith("optimistic-");
@@ -47,11 +51,19 @@ export function MobileTodoRow({
     <View style={[styles.todoRow, todo.completed ? styles.todoRowComplete : null]}>
       <View style={styles.todoHeader}>
         <View style={styles.todoMeta}>
-          <Text style={styles.todoEyebrow}>{isOptimistic ? "SYNCING" : "UPDATED"}</Text>
-          <Text style={styles.todoMetaText}>
-            {isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}
+          <Text style={styles.todoEyebrow}>
+            {isOptimistic ? resource.pages.todo.syncing : resource.pages.todo.updated}
           </Text>
-          {todo.dueDate ? <Text style={styles.todoMetaText}>Due {todo.dueDate}</Text> : null}
+          <Text style={styles.todoMetaText}>
+            {isOptimistic
+              ? resource.pages.todo.waitingForSupabase
+              : formatUpdatedAt(todo.updatedAt)}
+          </Text>
+          {todo.dueDate ? (
+            <Text style={styles.todoMetaText}>
+              {resource.pages.todo.due.replace("{{date}}", todo.dueDate)}
+            </Text>
+          ) : null}
         </View>
         <Switch
           disabled={disabled}
@@ -65,14 +77,14 @@ export function MobileTodoRow({
           <TextInput
             editable={!disabled}
             onChangeText={setDraft}
-            placeholder="Update task title"
+            placeholder={resource.fields.updateTaskTitlePlaceholder}
             style={styles.input}
             value={draft}
           />
           <TextInput
             editable={!disabled}
             onChangeText={setDraftDueDate}
-            placeholder="Due date (YYYY-MM-DD)"
+            placeholder={resource.fields.dueDatePlaceholder}
             style={styles.input}
             value={draftDueDate}
           />
@@ -82,14 +94,14 @@ export function MobileTodoRow({
               onPress={() => onSaveEdit(todo.id, draft, draftDueDate)}
               style={[styles.secondaryButton, disabled ? styles.buttonDisabled : null]}
             >
-              <Text style={styles.secondaryButtonText}>Save</Text>
+              <Text style={styles.secondaryButtonText}>{resource.actions.save}</Text>
             </Pressable>
             <Pressable
               disabled={disabled}
               onPress={onCancelEdit}
               style={[styles.ghostButton, disabled ? styles.buttonDisabled : null]}
             >
-              <Text style={styles.ghostButtonText}>Cancel</Text>
+              <Text style={styles.ghostButtonText}>{resource.actions.cancel}</Text>
             </Pressable>
           </View>
         </View>
@@ -106,14 +118,14 @@ export function MobileTodoRow({
             onPress={() => onStartEdit(todo)}
             style={[styles.secondaryButton, disabled ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.secondaryButtonText}>Edit</Text>
+            <Text style={styles.secondaryButtonText}>{resource.actions.edit}</Text>
           </Pressable>
           <Pressable
             disabled={disabled}
             onPress={() => onDelete(todo.id)}
             style={[styles.dangerButton, disabled ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.dangerButtonText}>Delete</Text>
+            <Text style={styles.dangerButtonText}>{resource.actions.delete}</Text>
           </Pressable>
         </View>
       ) : null}

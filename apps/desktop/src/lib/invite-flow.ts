@@ -20,6 +20,7 @@ type JoinInviteFailureInput = {
   error: unknown;
   lastError: string | null;
   lastErrorKind: string | null;
+  locale?: string | null;
 };
 
 export const extractInviteCode = extractWorkspaceInviteCode;

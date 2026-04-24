@@ -16,14 +16,18 @@ export interface WorkspaceShellDashboardAction {
 
 export interface WorkspaceShellDashboardPageProps {
   actions: WorkspaceShellDashboardAction[];
+  eyebrow: string;
   heroBody: string;
+  heading: string;
   renderActionCard: (action: WorkspaceShellDashboardAction) => ReactNode;
   stats: WorkspaceShellDashboardStat[];
 }
 
 export function WorkspaceShellDashboardPage({
   actions,
+  eyebrow,
   heroBody,
+  heading,
   renderActionCard,
   stats,
 }: WorkspaceShellDashboardPageProps) {
@@ -31,8 +35,8 @@ export function WorkspaceShellDashboardPage({
     <>
       <section className="dashboard-hero">
         <div>
-          <p className="page-eyebrow">Dashboard</p>
-          <h2>Keep your workspaces moving from one place.</h2>
+          <p className="page-eyebrow">{eyebrow}</p>
+          <h2>{heading}</h2>
           <p className="dashboard-hero__body">{heroBody}</p>
         </div>
 

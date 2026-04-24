@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import type { TodoAppController, TodoAppState, TodoAppViewModel } from "todo-app";
-import { getWorkspaceShellResource } from "workspace-shell";
+import { getWorkspaceShellResource, type WorkspaceShellResources } from "workspace-shell";
 
 import { Banner } from "../components/mobile-ui.tsx";
 import { MobileTodoRow } from "../components/todo-row.tsx";
@@ -20,88 +20,89 @@ function formatDateTime(value: string): string {
   }).format(new Date(value));
 }
 
-function getWorkspaceDescription(workspace: MobileWorkspace | null): string {
+function getWorkspaceDescription(
+  workspace: MobileWorkspace | null,
+  resource: WorkspaceShellResources,
+): string {
   if (!workspace) {
-    return "No personal or team workspace is available for this account yet.";
+    return resource.pages.workspace.noWorkspaceDescription;
   }
 
   return workspace.kind === "team"
-    ? "Shared tasks stay in sync for every member of this team workspace."
-    : "These tasks belong to your personal workspace and follow your account across clients.";
+    ? resource.pages.workspace.teamIntroBody
+    : resource.pages.workspace.personalIntroBody;
 }
 
-function getComposerPlaceholder(workspace: MobileWorkspace | null): string {
+function getComposerPlaceholder(
+  workspace: MobileWorkspace | null,
+  resource: WorkspaceShellResources,
+): string {
   if (!workspace) {
-    return "Select a workspace before adding a task";
+    return resource.pages.workspace.composerNoWorkspace;
   }
 
-  return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+  return workspace.kind === "team"
+    ? resource.pages.workspace.composerTeam
+    : resource.pages.workspace.composerPersonal;
 }
 
-function getTaskFilterLabel(filter: "all" | "active" | "completed"): string {
-  switch (filter) {
-    case "active":
-      return "Active";
-    case "completed":
-      return "Completed";
-    default:
-      return "All";
-  }
+function getTaskFilterLabel(
+  filter: "all" | "active" | "completed",
+  resource: WorkspaceShellResources,
+): string {
+  return resource.pages.workspace.taskFilterLabels[filter];
 }
 
-function getDateViewLabel(view: "all" | "due-today" | "upcoming"): string {
-  switch (view) {
-    case "due-today":
-      return "Due today";
-    case "upcoming":
-      return "Upcoming";
-    default:
-      return "All tasks";
-  }
+function getDateViewLabel(
+  view: "all" | "due-today" | "upcoming",
+  resource: WorkspaceShellResources,
+): string {
+  return resource.pages.workspace.dateViewLabels[view];
 }
 
-function getEmptyStateCopy(workspace: MobileWorkspace | null) {
+function getEmptyStateCopy(workspace: MobileWorkspace | null, resource: WorkspaceShellResources) {
   if (!workspace) {
     return {
-      eyebrow: "NO WORKSPACE",
-      title: "Choose a workspace to begin.",
-      body: "Once a workspace is available, new tasks and refresh actions will target that scope.",
+      eyebrow: resource.pages.workspace.emptyNoWorkspaceEyebrow,
+      title: resource.pages.workspace.emptyNoWorkspaceTitle,
+      body: resource.pages.workspace.emptyNoWorkspaceBody,
     };
   }
 
   if (workspace.kind === "team") {
     return {
-      eyebrow: "TEAM WORKSPACE IS EMPTY",
-      title: `Start the shared list for ${workspace.name}.`,
-      body: "New team tasks will persist in Supabase and become visible to every member.",
+      eyebrow: resource.pages.workspace.emptyTeamEyebrow,
+      title: resource.pages.workspace.emptyTeamTitle.replace("{{workspaceName}}", workspace.name),
+      body: resource.pages.workspace.emptyTeamBody,
     };
   }
 
   return {
-    eyebrow: "EMPTY LIST",
-    title: "Create the first synced todo.",
-    body: "New items will persist to Supabase and become available in the other clients.",
+    eyebrow: resource.pages.workspace.emptyPersonalEyebrow,
+    title: resource.pages.workspace.emptyPersonalTitle,
+    body: resource.pages.workspace.emptyPersonalBody,
   };
 }
 
 function getTaskEmptyStateCopy(input: {
   dateView: "all" | "due-today" | "upcoming";
   hasAnyTodos: boolean;
+  resource: WorkspaceShellResources;
   taskFilter: "all" | "active" | "completed";
   todosLength: number;
   workspace: MobileWorkspace | null;
 }) {
   if (!input.hasAnyTodos) {
-    return getEmptyStateCopy(input.workspace);
+    return getEmptyStateCopy(input.workspace, input.resource);
   }
 
   if (input.todosLength === 0) {
     return {
-      eyebrow: "NO MATCHING TASKS",
-      title: `${getTaskFilterLabel(input.taskFilter)} tasks in ${getDateViewLabel(
-        input.dateView,
-      ).toLowerCase()} are clear right now.`,
-      body: "Switch task filters or date views to inspect the rest of this workspace. Date views only include tasks that already have a due date.",
+      eyebrow: input.resource.pages.workspace.emptyMatchEyebrow,
+      title: input.resource.pages.workspace.emptyMatchTitle
+        .replace("{{taskFilter}}", getTaskFilterLabel(input.taskFilter, input.resource))
+        .replace("{{dateView}}", getDateViewLabel(input.dateView, input.resource).toLowerCase()),
+      body: input.resource.pages.workspace.emptyMatchBody,
     };
   }
 
@@ -189,6 +190,7 @@ function WorkspaceScreen({
   draftTitle,
   editingTodoId,
   hasAnyTodos,
+  locale,
   onCancelEdit,
   onCreateTeamInvite,
   onCreateTodo,
@@ -224,6 +226,7 @@ function WorkspaceScreen({
   draftTitle: string;
   editingTodoId: string | null;
   hasAnyTodos: boolean;
+  locale?: string | null;
   onCancelEdit: () => void;
   onCreateTeamInvite: () => void;
   onCreateTodo: () => void;
@@ -252,9 +255,11 @@ function WorkspaceScreen({
   teamWorkspaces: MobileWorkspace[];
   todos: MobileTodoItem[];
 }) {
+  const resource = getWorkspaceShellResource(locale);
   const emptyStateCopy = getTaskEmptyStateCopy({
     dateView,
     hasAnyTodos,
+    resource,
     taskFilter,
     todosLength: todos.length,
     workspace: pageWorkspace,
@@ -264,10 +269,14 @@ function WorkspaceScreen({
     <View style={styles.stack}>
       <View style={styles.workspaceCard}>
         <Text style={styles.eyebrow}>
-          {route.name === "team-detail" ? "TEAM DETAIL" : "MY WORKSPACE"}
+          {route.name === "team-detail"
+            ? resource.destinations.teamDetail.label
+            : resource.destinations.personalWorkspace.label}
         </Text>
-        <Text style={styles.sectionTitle}>{pageWorkspace?.name ?? "No workspace available"}</Text>
-        <Text style={styles.body}>{getWorkspaceDescription(pageWorkspace)}</Text>
+        <Text style={styles.sectionTitle}>
+          {pageWorkspace?.name ?? resource.pages.workspace.noAvailableWorkspace}
+        </Text>
+        <Text style={styles.body}>{getWorkspaceDescription(pageWorkspace, resource)}</Text>
 
         <ScrollView
           horizontal
@@ -298,7 +307,7 @@ function WorkspaceScreen({
                   route.name === "personal-workspace" ? styles.workspaceTabMetaActive : null,
                 ]}
               >
-                Personal list
+                {resource.pages.workspace.personalList}
               </Text>
             </Pressable>
           ) : null}
@@ -328,7 +337,7 @@ function WorkspaceScreen({
                 <Text
                   style={[styles.workspaceTabMeta, isActive ? styles.workspaceTabMetaActive : null]}
                 >
-                  Team detail
+                  {resource.pages.workspace.teamDetail}
                 </Text>
               </Pressable>
             );
@@ -340,14 +349,14 @@ function WorkspaceScreen({
         <TextInput
           editable={canManageTodos}
           onChangeText={onDraftTitleChange}
-          placeholder={getComposerPlaceholder(pageWorkspace)}
+          placeholder={getComposerPlaceholder(pageWorkspace, resource)}
           style={styles.input}
           value={draftTitle}
         />
         <TextInput
           editable={canManageTodos}
           onChangeText={onDraftDueDateChange}
-          placeholder="Due date (YYYY-MM-DD)"
+          placeholder={resource.fields.dueDatePlaceholder}
           style={styles.input}
           value={draftDueDate}
         />
@@ -356,15 +365,13 @@ function WorkspaceScreen({
           onPress={onCreateTodo}
           style={[styles.primaryButton, !canManageTodos ? styles.buttonDisabled : null]}
         >
-          <Text style={styles.primaryButtonText}>Add task</Text>
+          <Text style={styles.primaryButtonText}>{resource.actions.addTask}</Text>
         </Pressable>
       </View>
 
       <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>Task filter</Text>
-        <Text style={styles.sectionSubtitle}>
-          Focus this workspace by status without changing shared business state.
-        </Text>
+        <Text style={styles.sectionTitle}>{resource.pages.workspace.filterPanelLabel}</Text>
+        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.filterPanelBody}</Text>
         <View style={styles.chipRow}>
           {(["all", "active", "completed"] as const).map((filter) => (
             <Pressable
@@ -382,7 +389,7 @@ function WorkspaceScreen({
                   taskFilter === filter ? styles.filterChipLabelActive : null,
                 ]}
               >
-                {getTaskFilterLabel(filter)}
+                {getTaskFilterLabel(filter, resource)}
               </Text>
               <Text
                 style={[
@@ -398,10 +405,8 @@ function WorkspaceScreen({
       </View>
 
       <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>Date view</Text>
-        <Text style={styles.sectionSubtitle}>
-          Only tasks with a due date appear in due-today, upcoming, and selected-day inspection.
-        </Text>
+        <Text style={styles.sectionTitle}>{resource.pages.workspace.datePanelLabel}</Text>
+        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.datePanelBody}</Text>
         <View style={styles.chipRow}>
           {(["all", "due-today", "upcoming"] as const).map((view) => (
             <Pressable
@@ -419,7 +424,7 @@ function WorkspaceScreen({
                   dateView === view ? styles.filterChipLabelActive : null,
                 ]}
               >
-                {getDateViewLabel(view)}
+                {getDateViewLabel(view, resource)}
               </Text>
               <Text
                 style={[
@@ -435,25 +440,28 @@ function WorkspaceScreen({
       </View>
 
       <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>Selected day</Text>
-        <Text style={styles.sectionSubtitle}>
-          Inspect one day without turning the product into a full calendar.
-        </Text>
+        <Text style={styles.sectionTitle}>{resource.pages.workspace.selectedDateLabel}</Text>
+        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.datePanelHeading}</Text>
         <TextInput
           onChangeText={onSelectedDateChange}
-          placeholder="Selected date (YYYY-MM-DD)"
+          placeholder={resource.fields.selectedDatePlaceholder}
           style={styles.input}
           value={selectedDate}
         />
         <View style={styles.summaryRow}>
           <Text style={styles.summaryPrimary}>{selectedDateLabel}</Text>
           <Text style={styles.summarySecondary}>
-            {selectedDateTodos.length} {selectedDateTodos.length === 1 ? "task" : "tasks"}
+            {resource.pages.workspace.selectedDateSummary
+              .replace("{{count}}", String(selectedDateTodos.length))
+              .replace("{{plural}}", selectedDateTodos.length === 1 ? "" : "s")}
           </Text>
         </View>
         {selectedDateTodos.length === 0 ? (
           <Text style={styles.body}>
-            No {getTaskFilterLabel(taskFilter).toLowerCase()} tasks are due on this day.
+            {resource.pages.workspace.selectedDateEmpty.replace(
+              "{{taskFilter}}",
+              getTaskFilterLabel(taskFilter, resource).toLowerCase(),
+            )}
           </Text>
         ) : (
           <View style={styles.stack}>
@@ -461,8 +469,12 @@ function WorkspaceScreen({
               <View key={todo.id} style={styles.selectedDateCard}>
                 <Text style={styles.selectedDateTitle}>{todo.title}</Text>
                 <Text style={styles.selectedDateMeta}>
-                  {todo.completed ? "Completed" : "Active"}
-                  {todo.dueDate ? `, due ${todo.dueDate}` : ""}
+                  {todo.completed
+                    ? resource.pages.workspace.taskFilterLabels.completed
+                    : resource.pages.workspace.taskFilterLabels.active}
+                  {todo.dueDate
+                    ? `, ${resource.pages.todo.due.replace("{{date}}", todo.dueDate)}`
+                    : ""}
                 </Text>
               </View>
             ))}
@@ -472,27 +484,33 @@ function WorkspaceScreen({
 
       {route.name === "team-detail" && pageWorkspace?.kind === "team" ? (
         <View style={styles.filterPanel}>
-          <Text style={styles.sectionTitle}>Invite teammates</Text>
+          <Text style={styles.sectionTitle}>{resource.pages.workspace.invitePanelLabel}</Text>
           <Text style={styles.sectionSubtitle}>
-            Generate a reusable invite for {pageWorkspace.name} without leaving team detail.
+            {resource.pages.workspace.invitePanelHeading.replace(
+              "{{workspaceName}}",
+              pageWorkspace.name,
+            )}
           </Text>
           <Pressable
             disabled={!canManageTodos}
             onPress={onCreateTeamInvite}
             style={[styles.secondaryButton, !canManageTodos ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.secondaryButtonText}>Create invite</Text>
+            <Text style={styles.secondaryButtonText}>{resource.actions.createInvite}</Text>
           </Pressable>
           {teamInviteMessage ? <Text style={styles.body}>{teamInviteMessage}</Text> : null}
           {teamInviteCode ? (
             <View style={styles.stack}>
               <View style={styles.summaryCard}>
-                <Text style={styles.todoEyebrow}>INVITE CODE</Text>
+                <Text style={styles.todoEyebrow}>{resource.fields.inviteCode}</Text>
                 <Text style={styles.selectedDateTitle}>{teamInviteCode}</Text>
               </View>
               {teamInviteExpiresAt ? (
                 <Text style={styles.body}>
-                  Invite expires {formatDateTime(teamInviteExpiresAt)}.
+                  {resource.pages.workspace.inviteExpires.replace(
+                    "{{expiresAt}}",
+                    formatDateTime(teamInviteExpiresAt),
+                  )}
                 </Text>
               ) : null}
             </View>
@@ -518,6 +536,7 @@ function WorkspaceScreen({
           onSaveEdit={onSaveEdit}
           onStartEdit={onStartEdit}
           onToggleComplete={onToggleComplete}
+          locale={locale}
           todo={todo}
         />
       ))}
@@ -637,7 +656,7 @@ export function MobileSignedInPages({
     <View style={styles.stack}>
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={styles.eyebrow}>MOBILE CLIENT</Text>
+          <Text style={styles.eyebrow}>{resource.navigation.heading}</Text>
           <Text style={styles.sectionTitle}>{pageTitle}</Text>
           {state.session?.email ? (
             <Text style={styles.sessionText}>{state.session.email}</Text>
@@ -650,14 +669,14 @@ export function MobileSignedInPages({
             onPress={() => void controller.refresh().catch(() => {})}
             style={[styles.secondaryButton, pendingUi ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.secondaryButtonText}>Refresh</Text>
+            <Text style={styles.secondaryButtonText}>{resource.actions.refresh}</Text>
           </Pressable>
           <Pressable
             disabled={pendingUi}
             onPress={() => void controller.signOut().catch(() => {})}
             style={[styles.ghostButton, pendingUi ? styles.buttonDisabled : null]}
           >
-            <Text style={styles.ghostButtonText}>Sign out</Text>
+            <Text style={styles.ghostButtonText}>{resource.actions.signOut}</Text>
           </Pressable>
         </View>
       </View>
@@ -666,18 +685,22 @@ export function MobileSignedInPages({
       {viewModel.pendingMessage ? <Banner text={viewModel.pendingMessage} /> : null}
       {viewModel.errorMessage ? (
         <Banner
-          actionLabel="Dismiss"
+          actionLabel={resource.actions.dismiss}
           onAction={() => controller.clearError()}
           text={viewModel.errorMessage}
           tone={viewModel.errorKind === "notice" ? "accent" : "danger"}
         />
       ) : null}
       {routeNotice ? (
-        <Banner actionLabel="Dismiss" onAction={onDismissRouteNotice} text={routeNotice} />
+        <Banner
+          actionLabel={resource.actions.dismiss}
+          onAction={onDismissRouteNotice}
+          text={routeNotice}
+        />
       ) : null}
       {joinFeedback && route.name === "join-team" ? (
         <Banner
-          actionLabel="Dismiss"
+          actionLabel={resource.actions.dismiss}
           onAction={onDismissJoinFeedback}
           text={joinFeedback.message}
           tone={joinFeedback.kind === "notice" ? "accent" : "danger"}
@@ -685,7 +708,7 @@ export function MobileSignedInPages({
       ) : null}
 
       <View style={styles.workspaceCard}>
-        <Text style={styles.eyebrow}>DESTINATIONS</Text>
+        <Text style={styles.eyebrow}>{resource.navigation.heading}</Text>
         <Text style={styles.sectionTitle}>{resource.navigation.heading}</Text>
         <Text style={styles.sectionSubtitle}>{resource.navigation.subtitle}</Text>
         <MobileDestinationRail
@@ -702,7 +725,7 @@ export function MobileSignedInPages({
             <Text style={styles.eyebrow}>
               {resource.destinations.dashboard.label.toUpperCase()}
             </Text>
-            <Text style={styles.sectionTitle}>Choose where to work</Text>
+            <Text style={styles.sectionTitle}>{resource.pages.dashboard.heading}</Text>
             <Text style={styles.body}>{resource.pages.dashboard.heroBody}</Text>
           </View>
 
@@ -739,14 +762,13 @@ export function MobileSignedInPages({
             <View style={styles.stack}>
               {teamWorkspaces.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.eyebrow}>NO TEAMS YET</Text>
+                  <Text style={styles.eyebrow}>
+                    {resource.pages.teamList.dashboardEmptyEyebrow}
+                  </Text>
                   <Text style={styles.sectionTitle}>
-                    Join or create a team from its own destination.
+                    {resource.pages.teamList.dashboardEmptyTitle}
                   </Text>
-                  <Text style={styles.body}>
-                    The dedicated join team and create team screens are now part of the mobile
-                    shell.
-                  </Text>
+                  <Text style={styles.body}>{resource.pages.teamList.dashboardEmptyBody}</Text>
                 </View>
               ) : (
                 teamWorkspaces.map((workspace) => (
@@ -822,6 +844,7 @@ export function MobileSignedInPages({
           draftTitle={draftTitle}
           editingTodoId={editingTodoId}
           hasAnyTodos={hasAnyTodos}
+          locale={locale}
           onCancelEdit={onCancelEdit}
           onCreateTeamInvite={onCreateTeamInvite}
           onCreateTodo={onCreateTodo}
@@ -865,7 +888,7 @@ export function MobileSignedInPages({
             autoCapitalize="none"
             editable={!pendingUi}
             onChangeText={onJoinInviteCodeChange}
-            placeholder="Invite code or link"
+            placeholder={resource.fields.inviteCodeOrLinkPlaceholder}
             style={styles.input}
             value={joinInviteCode}
           />
@@ -893,14 +916,12 @@ export function MobileSignedInPages({
       {route.name === "create-team" ? (
         <View style={styles.emptyState}>
           <Text style={styles.eyebrow}>{resource.destinations.createTeam.label.toUpperCase()}</Text>
-          <Text style={styles.sectionTitle}>Create a shared workspace</Text>
-          <Text style={styles.body}>
-            Create a team from its own mobile destination, then continue directly into team detail.
-          </Text>
+          <Text style={styles.sectionTitle}>{resource.pages.createTeam.mobileHeading}</Text>
+          <Text style={styles.body}>{resource.pages.createTeam.mobileBody}</Text>
           <TextInput
             editable={!pendingUi}
             onChangeText={onDraftTeamNameChange}
-            placeholder="Team name"
+            placeholder={resource.fields.teamNamePlaceholder}
             style={styles.input}
             value={draftTeamName}
           />

@@ -342,6 +342,7 @@ export function MobileAppShell() {
             error,
             lastError: latestState.lastError,
             lastErrorKind: latestState.lastErrorKind,
+            locale: bootstrap.workspaceShellLocale,
           }),
         );
       });

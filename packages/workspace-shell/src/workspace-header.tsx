@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { WorkspaceShellRoute } from "./index.ts";
+import { getWorkspaceShellResource } from "./index.ts";
 
 export interface WorkspaceShellHeaderWorkspace {
   kind: "personal" | "team";
@@ -11,6 +12,7 @@ export interface WorkspaceShellWorkspaceHeaderProps {
   introBody: string;
   introEyebrow: string;
   introTitle: string;
+  locale?: string | null;
   renderNavigationAction: (input: {
     className: string;
     label: string;
@@ -23,12 +25,17 @@ export function WorkspaceShellWorkspaceHeader({
   introBody,
   introEyebrow,
   introTitle,
+  locale,
   renderNavigationAction,
   workspace,
 }: WorkspaceShellWorkspaceHeaderProps) {
+  const resource = getWorkspaceShellResource(locale);
   const secondaryRoute =
     workspace?.kind === "team" ? { name: "team-list" as const } : { name: "create-team" as const };
-  const secondaryLabel = workspace?.kind === "team" ? "All teams" : "Create team";
+  const secondaryLabel =
+    workspace?.kind === "team"
+      ? resource.pages.workspace.allTeams
+      : resource.destinations.createTeam.label;
 
   return (
     <>
@@ -42,7 +49,7 @@ export function WorkspaceShellWorkspaceHeader({
         <div className="page-intro__actions">
           {renderNavigationAction({
             className: "button-link button-link--muted",
-            label: "Dashboard",
+            label: resource.destinations.dashboard.label,
             route: { name: "dashboard" },
           })}
           {renderNavigationAction({
@@ -57,12 +64,14 @@ export function WorkspaceShellWorkspaceHeader({
         {workspace ? (
           <div className="workspace-summary__meta">
             <span className={`workspace-badge workspace-badge--${workspace.kind}`}>
-              {workspace.kind === "team" ? "Team workspace" : "Personal workspace"}
+              {workspace.kind === "team"
+                ? resource.pages.workspace.teamWorkspaceBadge
+                : resource.pages.workspace.personalWorkspaceBadge}
             </span>
             <span className="workspace-switcher__hint">
               {workspace.kind === "team"
-                ? "Create, edit, complete, and delete actions apply to this shared team list."
-                : "Create, edit, complete, and delete actions stay scoped to your personal list."}
+                ? resource.pages.workspace.teamIntroBody
+                : resource.pages.workspace.personalIntroBody}
             </span>
           </div>
         ) : null}
