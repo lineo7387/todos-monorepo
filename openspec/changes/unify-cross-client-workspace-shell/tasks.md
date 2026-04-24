@@ -13,8 +13,8 @@
 ## 3. Mobile parity implementation
 
 - [x] 3.1 Refactor `apps/mobile` to adopt the canonical destination vocabulary for `dashboard`, `my workspace`, `team list`, `team detail`, `join team`, and `create team`
-- [ ] 3.2 Implement mobile team join/create and team-detail flows against the shared workspace-shell contract without regressing the workspace-first data model
-- [ ] 3.3 Implement mobile parity for optional `dueDate`, `all / active / completed`, and `all tasks / due today / upcoming` plus lightweight selected-day inspection
+- [x] 3.2 Implement mobile team join/create and team-detail flows against the shared workspace-shell contract without regressing the workspace-first data model
+- [x] 3.3 Implement mobile parity for optional `dueDate`, `all / active / completed`, and `all tasks / due today / upcoming` plus lightweight selected-day inspection
 
 ## 4. Cross-client localization alignment
 

@@ -29,17 +29,19 @@ export function MobileTodoRow({
   isEditing: boolean;
   onCancelEdit: () => void;
   onDelete: (todoId: string) => void;
-  onSaveEdit: (todoId: string, title: string) => void;
+  onSaveEdit: (todoId: string, title: string, dueDate: string) => void;
   onStartEdit: (todo: MobileTodoItem) => void;
   onToggleComplete: (todo: MobileTodoItem) => void;
   todo: MobileTodoItem;
 }) {
   const [draft, setDraft] = useState(todo.title);
+  const [draftDueDate, setDraftDueDate] = useState(todo.dueDate ?? "");
   const isOptimistic = todo.id.startsWith("optimistic-");
 
   useEffect(() => {
     setDraft(todo.title);
-  }, [todo.id, todo.title]);
+    setDraftDueDate(todo.dueDate ?? "");
+  }, [todo.dueDate, todo.id, todo.title]);
 
   return (
     <View style={[styles.todoRow, todo.completed ? styles.todoRowComplete : null]}>
@@ -49,6 +51,7 @@ export function MobileTodoRow({
           <Text style={styles.todoMetaText}>
             {isOptimistic ? "Waiting for Supabase" : formatUpdatedAt(todo.updatedAt)}
           </Text>
+          {todo.dueDate ? <Text style={styles.todoMetaText}>Due {todo.dueDate}</Text> : null}
         </View>
         <Switch
           disabled={disabled}
@@ -66,10 +69,17 @@ export function MobileTodoRow({
             style={styles.input}
             value={draft}
           />
+          <TextInput
+            editable={!disabled}
+            onChangeText={setDraftDueDate}
+            placeholder="Due date (YYYY-MM-DD)"
+            style={styles.input}
+            value={draftDueDate}
+          />
           <View style={styles.inlineActions}>
             <Pressable
               disabled={disabled}
-              onPress={() => onSaveEdit(todo.id, draft)}
+              onPress={() => onSaveEdit(todo.id, draft, draftDueDate)}
               style={[styles.secondaryButton, disabled ? styles.buttonDisabled : null]}
             >
               <Text style={styles.secondaryButtonText}>Save</Text>

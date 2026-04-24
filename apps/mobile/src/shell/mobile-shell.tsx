@@ -13,13 +13,27 @@ import {
 } from "todo-data";
 import { resolveWorkspaceRouteEffect } from "workspace-shell";
 
+import { SectionCard } from "../components/mobile-ui.tsx";
+import {
+  extractInviteCode,
+  getCreateInviteSuccessOutcome,
+  getJoinInviteFailureFeedback,
+  getJoinInviteSuccessOutcome,
+  type MobileJoinFeedback,
+} from "../lib/invite-flow.ts";
+import {
+  deriveMobileTaskView,
+  formatSelectedDateLabel,
+  getCurrentDateValue,
+  type MobileDateView,
+  type MobileTaskFilter,
+} from "../lib/task-view.ts";
 import { getMobileSupabaseEnv } from "../env.ts";
 import { MobileAuthPage } from "../pages/auth-page.tsx";
 import { MobileSignedInPages } from "../pages/signed-in-pages.tsx";
 import { getDefaultMobileRoute, type MobileRoute } from "../routing/routes.ts";
 import { createSecureStoreSessionStorageAdapter } from "../storage.ts";
 import { styles } from "../styles/mobile-shell.ts";
-import { SectionCard } from "../components/mobile-ui.tsx";
 
 const FALLBACK_STATE: TodoAppState = {
   status: "signed-out",
@@ -86,7 +100,17 @@ export function MobileAppShell() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [draftTitle, setDraftTitle] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState("");
+  const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [taskFilter, setTaskFilter] = useState<MobileTaskFilter>("all");
+  const [dateView, setDateView] = useState<MobileDateView>("all");
+  const [selectedDate, setSelectedDate] = useState(getCurrentDateValue);
+  const [teamInviteCode, setTeamInviteCode] = useState("");
+  const [teamInviteExpiresAt, setTeamInviteExpiresAt] = useState<string | null>(null);
+  const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
+  const [joinInviteCode, setJoinInviteCode] = useState("");
+  const [joinFeedback, setJoinFeedback] = useState<MobileJoinFeedback | null>(null);
 
   useEffect(() => {
     if (!bootstrap.controller) {
@@ -110,6 +134,14 @@ export function MobileAppShell() {
     route.name === "team-detail"
       ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
       : null;
+  const todayDateValue = getCurrentDateValue();
+  const { taskCounts, dateViewCounts, filteredTodos, selectedDateTodos } = deriveMobileTaskView(
+    viewModel.todos,
+    taskFilter,
+    dateView,
+    todayDateValue,
+    selectedDate,
+  );
 
   useEffect(() => {
     if (!controller) {
@@ -149,15 +181,46 @@ export function MobileAppShell() {
       setRoute(getDefaultMobileRoute());
       setRouteNotice(null);
       setDraftTitle("");
+      setDraftDueDate("");
+      setDraftTeamName("");
       setEditingTodoId(null);
+      setTaskFilter("all");
+      setDateView("all");
+      setSelectedDate(getCurrentDateValue());
+      setTeamInviteCode("");
+      setTeamInviteExpiresAt(null);
+      setTeamInviteMessage(null);
+      setJoinInviteCode("");
+      setJoinFeedback(null);
     }
   }, [viewModel.isAuthenticated]);
+
+  useEffect(() => {
+    if (route.name === "personal-workspace" || route.name === "team-detail") {
+      setTaskFilter("all");
+      setDateView("all");
+      setSelectedDate(getCurrentDateValue());
+    }
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
+  useEffect(() => {
+    setTeamInviteCode("");
+    setTeamInviteExpiresAt(null);
+    setTeamInviteMessage(null);
+  }, [route.name, route.name === "team-detail" ? route.teamId : null]);
+
+  useEffect(() => {
+    if (route.name !== "join-team") {
+      setJoinFeedback(null);
+    }
+  }, [route.name]);
 
   function navigate(nextRoute: MobileRoute) {
     setRoute(nextRoute);
     setRouteNotice(null);
     setEditingTodoId(null);
     setDraftTitle("");
+    setDraftDueDate("");
   }
 
   async function signIn() {
@@ -184,14 +247,16 @@ export function MobileAppShell() {
     await controller
       .createTodo({
         title: draftTitle,
+        dueDate: draftDueDate,
       })
       .then(() => {
         setDraftTitle("");
+        setDraftDueDate("");
       })
       .catch(() => {});
   }
 
-  async function saveEdit(todoId: string, title: string) {
+  async function saveEdit(todoId: string, title: string, dueDate: string) {
     if (!controller) {
       return;
     }
@@ -199,11 +264,82 @@ export function MobileAppShell() {
     await controller
       .updateTodo(todoId, {
         title,
+        dueDate,
       })
       .then(() => {
         setEditingTodoId(null);
       })
       .catch(() => {});
+  }
+
+  async function createTeam() {
+    if (!controller) {
+      return;
+    }
+
+    await controller
+      .createTeam({
+        name: draftTeamName,
+      })
+      .then((workspace) => {
+        setDraftTeamName("");
+        navigate({ name: "team-detail", teamId: workspace.teamId ?? workspace.id });
+      })
+      .catch(() => {});
+  }
+
+  async function createTeamInvite() {
+    if (!controller || !routedTeamWorkspace?.teamId) {
+      return;
+    }
+
+    setTeamInviteMessage(null);
+
+    await controller
+      .createTeamInvite(routedTeamWorkspace.teamId)
+      .then((invite) => {
+        const outcome = getCreateInviteSuccessOutcome(invite);
+        setTeamInviteCode(outcome.code);
+        setTeamInviteExpiresAt(outcome.expiresAt);
+        setTeamInviteMessage(outcome.message);
+      })
+      .catch(() => {});
+  }
+
+  async function joinTeam() {
+    if (!controller) {
+      return;
+    }
+
+    setJoinFeedback(null);
+
+    await controller
+      .redeemTeamInvite(extractInviteCode(joinInviteCode))
+      .then(async (workspace) => {
+        const outcome = getJoinInviteSuccessOutcome({
+          activeWorkspaceId: controller.getState().activeWorkspaceId,
+          workspace,
+        });
+
+        if (outcome.selectWorkspaceId) {
+          await controller.selectWorkspace(outcome.selectWorkspaceId).catch(() => {});
+        }
+
+        setJoinInviteCode("");
+        setJoinFeedback(null);
+        navigate(outcome.route);
+        setRouteNotice(outcome.routeNotice);
+      })
+      .catch((error: unknown) => {
+        const latestState = controller.getState();
+        setJoinFeedback(
+          getJoinInviteFailureFeedback({
+            error,
+            lastError: latestState.lastError,
+            lastErrorKind: latestState.lastErrorKind,
+          }),
+        );
+      });
   }
 
   function startEditing(todo: TodoAppState["todos"][number]) {
@@ -266,19 +402,45 @@ export function MobileAppShell() {
           ) : (
             <MobileSignedInPages
               controller={controller}
+              dateView={dateView}
+              dateViewCounts={dateViewCounts}
+              draftDueDate={draftDueDate}
+              draftTeamName={draftTeamName}
               draftTitle={draftTitle}
               editingTodoId={editingTodoId}
+              filteredTodos={filteredTodos}
+              hasAnyTodos={viewModel.todos.length > 0}
+              joinFeedback={joinFeedback}
+              joinInviteCode={joinInviteCode}
               onCancelEdit={cancelEditing}
+              onCreateTeam={() => void createTeam()}
+              onCreateTeamInvite={() => void createTeamInvite()}
               onCreateTodo={() => void createTodo()}
+              onDateViewChange={setDateView}
+              onDismissJoinFeedback={() => setJoinFeedback(null)}
               onDismissRouteNotice={() => setRouteNotice(null)}
+              onDraftDueDateChange={setDraftDueDate}
+              onDraftTeamNameChange={setDraftTeamName}
               onDraftTitleChange={setDraftTitle}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onJoinTeam={() => void joinTeam()}
               onNavigate={navigate}
-              onSaveEdit={(todoId, title) => void saveEdit(todoId, title)}
+              onSaveEdit={(todoId, title, dueDate) => void saveEdit(todoId, title, dueDate)}
+              onSelectedDateChange={setSelectedDate}
               onStartEdit={startEditing}
+              onTaskFilterChange={setTaskFilter}
               pendingUi={pendingUi}
               route={route}
               routeNotice={routeNotice}
+              selectedDate={selectedDate}
+              selectedDateLabel={formatSelectedDateLabel(selectedDate)}
+              selectedDateTodos={selectedDateTodos}
               state={state}
+              taskCounts={taskCounts}
+              taskFilter={taskFilter}
+              teamInviteCode={teamInviteCode}
+              teamInviteExpiresAt={teamInviteExpiresAt}
+              teamInviteMessage={teamInviteMessage}
               viewModel={viewModel}
             />
           )}

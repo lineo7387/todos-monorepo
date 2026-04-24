@@ -10,6 +10,16 @@ import { styles } from "../styles/mobile-shell.ts";
 type MobileTodoItem = TodoAppState["todos"][number];
 type MobileWorkspace = Exclude<TodoAppViewModel["activeWorkspace"], null>;
 
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 function getWorkspaceDescription(workspace: MobileWorkspace | null): string {
   if (!workspace) {
     return "No personal or team workspace is available for this account yet.";
@@ -26,6 +36,28 @@ function getComposerPlaceholder(workspace: MobileWorkspace | null): string {
   }
 
   return workspace.kind === "team" ? "Add a task for this team" : "Add a task for yourself";
+}
+
+function getTaskFilterLabel(filter: "all" | "active" | "completed"): string {
+  switch (filter) {
+    case "active":
+      return "Active";
+    case "completed":
+      return "Completed";
+    default:
+      return "All";
+  }
+}
+
+function getDateViewLabel(view: "all" | "due-today" | "upcoming"): string {
+  switch (view) {
+    case "due-today":
+      return "Due today";
+    case "upcoming":
+      return "Upcoming";
+    default:
+      return "All tasks";
+  }
 }
 
 function getEmptyStateCopy(workspace: MobileWorkspace | null) {
@@ -50,6 +82,30 @@ function getEmptyStateCopy(workspace: MobileWorkspace | null) {
     title: "Create the first synced todo.",
     body: "New items will persist to Supabase and become available in the other clients.",
   };
+}
+
+function getTaskEmptyStateCopy(input: {
+  dateView: "all" | "due-today" | "upcoming";
+  hasAnyTodos: boolean;
+  taskFilter: "all" | "active" | "completed";
+  todosLength: number;
+  workspace: MobileWorkspace | null;
+}) {
+  if (!input.hasAnyTodos) {
+    return getEmptyStateCopy(input.workspace);
+  }
+
+  if (input.todosLength === 0) {
+    return {
+      eyebrow: "NO MATCHING TASKS",
+      title: `${getTaskFilterLabel(input.taskFilter)} tasks in ${getDateViewLabel(
+        input.dateView,
+      ).toLowerCase()} are clear right now.`,
+      body: "Switch task filters or date views to inspect the rest of this workspace. Date views only include tasks that already have a due date.",
+    };
+  }
+
+  return null;
 }
 
 function MobileDestinationRail({
@@ -125,42 +181,82 @@ function MobileDestinationRail({
 
 function WorkspaceScreen({
   canManageTodos,
+  dateView,
+  dateViewCounts,
+  draftDueDate,
   draftTitle,
   editingTodoId,
+  hasAnyTodos,
   onCancelEdit,
+  onCreateTeamInvite,
   onCreateTodo,
+  onDateViewChange,
   onDeleteTodo,
+  onDraftDueDateChange,
   onDraftTitleChange,
   onNavigate,
   onSaveEdit,
+  onSelectedDateChange,
   onStartEdit,
+  onTaskFilterChange,
   onToggleComplete,
   pageWorkspace,
   pendingUi,
   personalWorkspace,
   route,
+  selectedDate,
+  selectedDateLabel,
+  selectedDateTodos,
+  taskCounts,
+  taskFilter,
+  teamInviteCode,
+  teamInviteExpiresAt,
+  teamInviteMessage,
   teamWorkspaces,
   todos,
 }: {
   canManageTodos: boolean;
+  dateView: "all" | "due-today" | "upcoming";
+  dateViewCounts: Record<"all" | "due-today" | "upcoming", number>;
+  draftDueDate: string;
   draftTitle: string;
   editingTodoId: string | null;
+  hasAnyTodos: boolean;
   onCancelEdit: () => void;
+  onCreateTeamInvite: () => void;
   onCreateTodo: () => void;
+  onDateViewChange: (view: "all" | "due-today" | "upcoming") => void;
   onDeleteTodo: (todoId: string) => void;
+  onDraftDueDateChange: (value: string) => void;
   onDraftTitleChange: (value: string) => void;
   onNavigate: (route: MobileRoute) => void;
-  onSaveEdit: (todoId: string, title: string) => void;
+  onSaveEdit: (todoId: string, title: string, dueDate: string) => void;
+  onSelectedDateChange: (value: string) => void;
   onStartEdit: (todo: MobileTodoItem) => void;
+  onTaskFilterChange: (filter: "all" | "active" | "completed") => void;
   onToggleComplete: (todo: MobileTodoItem) => void;
   pageWorkspace: MobileWorkspace | null;
   pendingUi: boolean;
   personalWorkspace: MobileWorkspace | null;
   route: MobileRoute;
+  selectedDate: string;
+  selectedDateLabel: string;
+  selectedDateTodos: MobileTodoItem[];
+  taskCounts: Record<"all" | "active" | "completed", number>;
+  taskFilter: "all" | "active" | "completed";
+  teamInviteCode: string;
+  teamInviteExpiresAt: string | null;
+  teamInviteMessage: string | null;
   teamWorkspaces: MobileWorkspace[];
   todos: MobileTodoItem[];
 }) {
-  const emptyStateCopy = getEmptyStateCopy(pageWorkspace);
+  const emptyStateCopy = getTaskEmptyStateCopy({
+    dateView,
+    hasAnyTodos,
+    taskFilter,
+    todosLength: todos.length,
+    workspace: pageWorkspace,
+  });
 
   return (
     <View style={styles.stack}>
@@ -246,6 +342,13 @@ function WorkspaceScreen({
           style={styles.input}
           value={draftTitle}
         />
+        <TextInput
+          editable={canManageTodos}
+          onChangeText={onDraftDueDateChange}
+          placeholder="Due date (YYYY-MM-DD)"
+          style={styles.input}
+          value={draftDueDate}
+        />
         <Pressable
           disabled={!canManageTodos}
           onPress={onCreateTodo}
@@ -255,7 +358,147 @@ function WorkspaceScreen({
         </Pressable>
       </View>
 
-      {todos.length === 0 ? (
+      <View style={styles.filterPanel}>
+        <Text style={styles.sectionTitle}>Task filter</Text>
+        <Text style={styles.sectionSubtitle}>
+          Focus this workspace by status without changing shared business state.
+        </Text>
+        <View style={styles.chipRow}>
+          {(["all", "active", "completed"] as const).map((filter) => (
+            <Pressable
+              key={filter}
+              onPress={() => onTaskFilterChange(filter)}
+              style={[
+                styles.filterChip,
+                taskFilter === filter ? styles.filterChipActive : null,
+                pendingUi ? styles.buttonDisabled : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterChipLabel,
+                  taskFilter === filter ? styles.filterChipLabelActive : null,
+                ]}
+              >
+                {getTaskFilterLabel(filter)}
+              </Text>
+              <Text
+                style={[
+                  styles.filterChipCount,
+                  taskFilter === filter ? styles.filterChipLabelActive : null,
+                ]}
+              >
+                {taskCounts[filter]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.filterPanel}>
+        <Text style={styles.sectionTitle}>Date view</Text>
+        <Text style={styles.sectionSubtitle}>
+          Only tasks with a due date appear in due-today, upcoming, and selected-day inspection.
+        </Text>
+        <View style={styles.chipRow}>
+          {(["all", "due-today", "upcoming"] as const).map((view) => (
+            <Pressable
+              key={view}
+              onPress={() => onDateViewChange(view)}
+              style={[
+                styles.filterChip,
+                dateView === view ? styles.filterChipActive : null,
+                pendingUi ? styles.buttonDisabled : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterChipLabel,
+                  dateView === view ? styles.filterChipLabelActive : null,
+                ]}
+              >
+                {getDateViewLabel(view)}
+              </Text>
+              <Text
+                style={[
+                  styles.filterChipCount,
+                  dateView === view ? styles.filterChipLabelActive : null,
+                ]}
+              >
+                {dateViewCounts[view]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.filterPanel}>
+        <Text style={styles.sectionTitle}>Selected day</Text>
+        <Text style={styles.sectionSubtitle}>
+          Inspect one day without turning the product into a full calendar.
+        </Text>
+        <TextInput
+          onChangeText={onSelectedDateChange}
+          placeholder="Selected date (YYYY-MM-DD)"
+          style={styles.input}
+          value={selectedDate}
+        />
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryPrimary}>{selectedDateLabel}</Text>
+          <Text style={styles.summarySecondary}>
+            {selectedDateTodos.length} {selectedDateTodos.length === 1 ? "task" : "tasks"}
+          </Text>
+        </View>
+        {selectedDateTodos.length === 0 ? (
+          <Text style={styles.body}>
+            No {getTaskFilterLabel(taskFilter).toLowerCase()} tasks are due on this day.
+          </Text>
+        ) : (
+          <View style={styles.stack}>
+            {selectedDateTodos.map((todo) => (
+              <View key={todo.id} style={styles.selectedDateCard}>
+                <Text style={styles.selectedDateTitle}>{todo.title}</Text>
+                <Text style={styles.selectedDateMeta}>
+                  {todo.completed ? "Completed" : "Active"}
+                  {todo.dueDate ? `, due ${todo.dueDate}` : ""}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {route.name === "team-detail" && pageWorkspace?.kind === "team" ? (
+        <View style={styles.filterPanel}>
+          <Text style={styles.sectionTitle}>Invite teammates</Text>
+          <Text style={styles.sectionSubtitle}>
+            Generate a reusable invite for {pageWorkspace.name} without leaving team detail.
+          </Text>
+          <Pressable
+            disabled={!canManageTodos}
+            onPress={onCreateTeamInvite}
+            style={[styles.secondaryButton, !canManageTodos ? styles.buttonDisabled : null]}
+          >
+            <Text style={styles.secondaryButtonText}>Create invite</Text>
+          </Pressable>
+          {teamInviteMessage ? <Text style={styles.body}>{teamInviteMessage}</Text> : null}
+          {teamInviteCode ? (
+            <View style={styles.stack}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.todoEyebrow}>INVITE CODE</Text>
+                <Text style={styles.selectedDateTitle}>{teamInviteCode}</Text>
+              </View>
+              {teamInviteExpiresAt ? (
+                <Text style={styles.body}>
+                  Invite expires {formatDateTime(teamInviteExpiresAt)}.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {emptyStateCopy ? (
         <View style={styles.emptyState}>
           <Text style={styles.eyebrow}>{emptyStateCopy.eyebrow}</Text>
           <Text style={styles.sectionTitle}>{emptyStateCopy.title}</Text>
@@ -282,35 +525,90 @@ function WorkspaceScreen({
 
 export function MobileSignedInPages({
   controller,
+  dateView,
+  dateViewCounts,
+  draftDueDate,
+  draftTeamName,
   draftTitle,
   editingTodoId,
+  filteredTodos,
+  hasAnyTodos,
+  joinFeedback,
+  joinInviteCode,
   onCancelEdit,
+  onCreateTeam,
+  onCreateTeamInvite,
   onCreateTodo,
+  onDateViewChange,
+  onDismissJoinFeedback,
   onDismissRouteNotice,
+  onDraftDueDateChange,
+  onDraftTeamNameChange,
   onDraftTitleChange,
+  onJoinInviteCodeChange,
+  onJoinTeam,
   onNavigate,
   onSaveEdit,
+  onSelectedDateChange,
   onStartEdit,
+  onTaskFilterChange,
   pendingUi,
   route,
   routeNotice,
+  selectedDate,
+  selectedDateLabel,
+  selectedDateTodos,
   state,
+  taskCounts,
+  taskFilter,
+  teamInviteCode,
+  teamInviteExpiresAt,
+  teamInviteMessage,
   viewModel,
 }: {
   controller: TodoAppController;
+  dateView: "all" | "due-today" | "upcoming";
+  dateViewCounts: Record<"all" | "due-today" | "upcoming", number>;
+  draftDueDate: string;
+  draftTeamName: string;
   draftTitle: string;
   editingTodoId: string | null;
+  filteredTodos: MobileTodoItem[];
+  hasAnyTodos: boolean;
+  joinFeedback: {
+    kind: "error" | "notice";
+    message: string;
+  } | null;
+  joinInviteCode: string;
   onCancelEdit: () => void;
+  onCreateTeam: () => void;
+  onCreateTeamInvite: () => void;
   onCreateTodo: () => void;
+  onDateViewChange: (view: "all" | "due-today" | "upcoming") => void;
+  onDismissJoinFeedback: () => void;
   onDismissRouteNotice: () => void;
+  onDraftDueDateChange: (value: string) => void;
+  onDraftTeamNameChange: (value: string) => void;
   onDraftTitleChange: (value: string) => void;
+  onJoinInviteCodeChange: (value: string) => void;
+  onJoinTeam: () => void;
   onNavigate: (route: MobileRoute) => void;
-  onSaveEdit: (todoId: string, title: string) => void;
+  onSaveEdit: (todoId: string, title: string, dueDate: string) => void;
+  onSelectedDateChange: (value: string) => void;
   onStartEdit: (todo: MobileTodoItem) => void;
+  onTaskFilterChange: (filter: "all" | "active" | "completed") => void;
   pendingUi: boolean;
   route: MobileRoute;
   routeNotice: string | null;
+  selectedDate: string;
+  selectedDateLabel: string;
+  selectedDateTodos: MobileTodoItem[];
   state: TodoAppState;
+  taskCounts: Record<"all" | "active" | "completed", number>;
+  taskFilter: "all" | "active" | "completed";
+  teamInviteCode: string;
+  teamInviteExpiresAt: string | null;
+  teamInviteMessage: string | null;
   viewModel: TodoAppViewModel;
 }) {
   const resource = getWorkspaceShellResource();
@@ -373,13 +671,19 @@ export function MobileSignedInPages({
       {routeNotice ? (
         <Banner actionLabel="Dismiss" onAction={onDismissRouteNotice} text={routeNotice} />
       ) : null}
+      {joinFeedback && route.name === "join-team" ? (
+        <Banner
+          actionLabel="Dismiss"
+          onAction={onDismissJoinFeedback}
+          text={joinFeedback.message}
+          tone={joinFeedback.kind === "notice" ? "accent" : "danger"}
+        />
+      ) : null}
 
       <View style={styles.workspaceCard}>
         <Text style={styles.eyebrow}>DESTINATIONS</Text>
         <Text style={styles.sectionTitle}>{resource.navigation.heading}</Text>
-        <Text style={styles.sectionSubtitle}>
-          Mobile now follows the same destination vocabulary as web and desktop.
-        </Text>
+        <Text style={styles.sectionSubtitle}>{resource.navigation.subtitle}</Text>
         <MobileDestinationRail disabled={pendingUi} onNavigate={onNavigate} route={route} />
       </View>
 
@@ -508,15 +812,24 @@ export function MobileSignedInPages({
       {route.name === "personal-workspace" || route.name === "team-detail" ? (
         <WorkspaceScreen
           canManageTodos={viewModel.canManageTodos}
+          dateView={dateView}
+          dateViewCounts={dateViewCounts}
+          draftDueDate={draftDueDate}
           draftTitle={draftTitle}
           editingTodoId={editingTodoId}
+          hasAnyTodos={hasAnyTodos}
           onCancelEdit={onCancelEdit}
+          onCreateTeamInvite={onCreateTeamInvite}
           onCreateTodo={onCreateTodo}
+          onDateViewChange={onDateViewChange}
           onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
+          onDraftDueDateChange={onDraftDueDateChange}
           onDraftTitleChange={onDraftTitleChange}
           onNavigate={onNavigate}
           onSaveEdit={onSaveEdit}
+          onSelectedDateChange={onSelectedDateChange}
           onStartEdit={onStartEdit}
+          onTaskFilterChange={onTaskFilterChange}
           onToggleComplete={(todo) =>
             void (
               todo.completed ? controller.uncompleteTodo(todo.id) : controller.completeTodo(todo.id)
@@ -526,20 +839,43 @@ export function MobileSignedInPages({
           pendingUi={pendingUi}
           personalWorkspace={personalWorkspace}
           route={route}
+          selectedDate={selectedDate}
+          selectedDateLabel={selectedDateLabel}
+          selectedDateTodos={selectedDateTodos}
+          taskCounts={taskCounts}
+          taskFilter={taskFilter}
+          teamInviteCode={teamInviteCode}
+          teamInviteExpiresAt={teamInviteExpiresAt}
+          teamInviteMessage={teamInviteMessage}
           teamWorkspaces={teamWorkspaces}
-          todos={viewModel.todos}
+          todos={filteredTodos}
         />
       ) : null}
 
       {route.name === "join-team" ? (
         <View style={styles.emptyState}>
           <Text style={styles.eyebrow}>JOIN TEAM</Text>
-          <Text style={styles.sectionTitle}>Dedicated destination is in place</Text>
+          <Text style={styles.sectionTitle}>Redeem an invite</Text>
           <Text style={styles.body}>
-            Mobile now exposes join team as its own destination in the same vocabulary as web and
-            desktop. The invite submission flow itself remains part of task 3.2.
+            Paste an invite code or link. After a successful join, mobile lands in the dedicated
+            team detail destination.
           </Text>
+          <TextInput
+            autoCapitalize="none"
+            editable={!pendingUi}
+            onChangeText={onJoinInviteCodeChange}
+            placeholder="Invite code or link"
+            style={styles.input}
+            value={joinInviteCode}
+          />
           <View style={styles.inlineActions}>
+            <Pressable
+              disabled={pendingUi}
+              onPress={onJoinTeam}
+              style={[styles.primaryButton, pendingUi ? styles.buttonDisabled : null]}
+            >
+              <Text style={styles.primaryButtonText}>Join team</Text>
+            </Pressable>
             <Pressable
               onPress={() => onNavigate({ name: "team-list" })}
               style={styles.secondaryButton}
@@ -556,12 +892,25 @@ export function MobileSignedInPages({
       {route.name === "create-team" ? (
         <View style={styles.emptyState}>
           <Text style={styles.eyebrow}>CREATE TEAM</Text>
-          <Text style={styles.sectionTitle}>Dedicated destination is in place</Text>
+          <Text style={styles.sectionTitle}>Create a shared workspace</Text>
           <Text style={styles.body}>
-            Mobile now exposes create team as its own destination in the same vocabulary as web and
-            desktop. The actual create flow and post-create team-detail handoff stay in task 3.2.
+            Create a team from its own mobile destination, then continue directly into team detail.
           </Text>
+          <TextInput
+            editable={!pendingUi}
+            onChangeText={onDraftTeamNameChange}
+            placeholder="Team name"
+            style={styles.input}
+            value={draftTeamName}
+          />
           <View style={styles.inlineActions}>
+            <Pressable
+              disabled={pendingUi}
+              onPress={onCreateTeam}
+              style={[styles.primaryButton, pendingUi ? styles.buttonDisabled : null]}
+            >
+              <Text style={styles.primaryButtonText}>Create team</Text>
+            </Pressable>
             <Pressable
               onPress={() => onNavigate({ name: "team-list" })}
               style={styles.secondaryButton}

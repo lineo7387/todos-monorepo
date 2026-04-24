@@ -250,6 +250,79 @@ export const styles = StyleSheet.create({
   composer: {
     gap: 12,
   },
+  filterPanel: {
+    gap: 12,
+    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    padding: 18,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  filterChip: {
+    minWidth: 112,
+    gap: 4,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#dacbb7",
+    backgroundColor: "#fffaf3",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  filterChipActive: {
+    borderColor: "#1f4f46",
+    backgroundColor: "#e6efe9",
+  },
+  filterChipLabel: {
+    color: "#4b3c2a",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  filterChipLabelActive: {
+    color: "#1f4f46",
+  },
+  filterChipCount: {
+    color: "#8a7a63",
+    fontSize: 13,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  summaryPrimary: {
+    color: "#2e2418",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  summarySecondary: {
+    color: "#6f604d",
+    fontSize: 13,
+  },
+  summaryCard: {
+    gap: 6,
+    borderRadius: 18,
+    backgroundColor: "#fffaf3",
+    padding: 14,
+  },
+  selectedDateCard: {
+    gap: 4,
+    borderRadius: 18,
+    backgroundColor: "#f5efe6",
+    padding: 14,
+  },
+  selectedDateTitle: {
+    color: "#2e2418",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  selectedDateMeta: {
+    color: "#6f604d",
+    fontSize: 13,
+  },
   emptyState: {
     gap: 8,
     borderRadius: 20,
