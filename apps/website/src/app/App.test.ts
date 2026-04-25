@@ -3,10 +3,20 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   deriveWorkspaceTaskView,
   getJoinTeamSuccessOutcome,
+  getWorkspaceRouteTitle,
   resolveWorkspaceRouteEffect,
 } from "workspace-shell";
 
 import { getWebsiteSignedInRoutePatterns } from "../routing/website-route-adapter.ts";
+import { getWebsiteRouteHref, parseWebsiteRoute } from "../routing/routes.ts";
+
+const localizedRouteTitleCases = [
+  [{ name: "dashboard" } as const, "Dashboard", "仪表盘"],
+  [{ name: "personal-workspace" } as const, "My workspace", "我的工作区"],
+  [{ name: "team-list" } as const, "Teams", "团队"],
+  [{ name: "join-team" } as const, "Join team", "加入团队"],
+  [{ name: "create-team" } as const, "Create team", "创建团队"],
+] as const;
 
 describe("resolveWorkspaceRouteEffect", () => {
   test("selects the personal workspace when the route targets my workspace", () => {
@@ -71,6 +81,26 @@ describe("website route adapter", () => {
       { key: "join-team", pageId: "join-team", path: "/teams/join" },
       { key: "create-team", pageId: "create-team", path: "/teams/new" },
     ]);
+  });
+
+  test("resolves localized route labels from the shared workspace-shell contract", () => {
+    for (const [route, englishTitle, chineseTitle] of localizedRouteTitleCases) {
+      expect(getWorkspaceRouteTitle(route)).toBe(englishTitle);
+      expect(getWorkspaceRouteTitle(route, undefined, "zh-CN")).toBe(chineseTitle);
+    }
+  });
+
+  test("maps browser paths to canonical routes without desktop-only section aliases", () => {
+    expect(parseWebsiteRoute("/")).toEqual({ name: "dashboard" });
+    expect(parseWebsiteRoute("/my-workspace")).toEqual({ name: "personal-workspace" });
+    expect(parseWebsiteRoute("/my-workspace/date")).toEqual({ name: "dashboard" });
+    expect(parseWebsiteRoute("/teams/team-1/date")).toEqual({
+      name: "team-detail",
+      teamId: "team-1",
+    });
+    expect(getWebsiteRouteHref({ name: "personal-workspace", section: "date" })).toBe(
+      "/my-workspace/date",
+    );
   });
 });
 

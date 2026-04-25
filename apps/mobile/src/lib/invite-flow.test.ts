@@ -6,6 +6,44 @@ import {
   getJoinInviteFailureFeedback,
   getJoinInviteSuccessOutcome,
 } from "./invite-flow.ts";
+import {
+  getDefaultMobileRoute,
+  getMobileRouteTitle,
+  isMobileRouteActive,
+} from "../routing/routes.ts";
+
+const localizedRouteTitleCases = [
+  [{ name: "dashboard" } as const, "Dashboard", "仪表盘"],
+  [{ name: "personal-workspace" } as const, "My workspace", "我的工作区"],
+  [{ name: "team-list" } as const, "Teams", "团队"],
+  [{ name: "join-team" } as const, "Join team", "加入团队"],
+  [{ name: "create-team" } as const, "Create team", "创建团队"],
+] as const;
+
+describe("mobile routes", () => {
+  test("uses the shared dashboard default and active-state grouping", () => {
+    expect(getDefaultMobileRoute()).toEqual({ name: "dashboard" });
+    expect(
+      isMobileRouteActive(
+        { name: "team-detail", teamId: "team-1", section: "date" },
+        { name: "team-list" },
+      ),
+    ).toBe(true);
+    expect(
+      isMobileRouteActive(
+        { name: "team-detail", teamId: "team-1" },
+        { name: "team-detail", teamId: "team-2" },
+      ),
+    ).toBe(false);
+  });
+
+  test("resolves localized route labels from the shared workspace-shell contract", () => {
+    for (const [route, englishTitle, chineseTitle] of localizedRouteTitleCases) {
+      expect(getMobileRouteTitle(route)).toBe(englishTitle);
+      expect(getMobileRouteTitle(route, undefined, "zh-CN")).toBe(chineseTitle);
+    }
+  });
+});
 
 describe("extractInviteCode", () => {
   test("returns a trimmed invite code when the input is already a code", () => {

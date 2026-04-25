@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define authenticated account access and Supabase-backed synchronization for persisted personal and team workspace task data.
+
+## Requirements
 
 ### Requirement: Users authenticate before accessing workspace task data
 

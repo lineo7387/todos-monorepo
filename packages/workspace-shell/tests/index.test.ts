@@ -51,6 +51,23 @@ const todos = [
   },
 ];
 
+function flattenStringLeaves(value: unknown, prefix = ""): Record<string, string> {
+  if (typeof value === "string") {
+    return { [prefix]: value };
+  }
+
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, string>>((paths, [key, childValue]) => {
+    return {
+      ...paths,
+      ...flattenStringLeaves(childValue, prefix ? `${prefix}.${key}` : key),
+    };
+  }, {});
+}
+
 describe("workspace-shell route contract", () => {
   test("defines the canonical signed-in destinations and namespace contract", () => {
     expect(workspaceShellPageIds).toEqual({
@@ -193,6 +210,98 @@ describe("workspace-shell route contract", () => {
     expect(getWorkspaceShellResource("zh").pages.workspace.sectionLabels.invite).toBe("邀请");
     expect(getWorkspaceShellResource("zh").pages.todo.waitingForSupabase).toBe("等待 Supabase");
     expect(normalizeWorkspaceShellLocale("en-US")).toBe("en");
+  });
+
+  test("keeps localization resources structurally aligned and covers declared translation keys", () => {
+    const englishResourcePaths = flattenStringLeaves(workspaceShellResources.en);
+    const chineseResourcePaths = flattenStringLeaves(workspaceShellResources["zh-CN"]);
+    const declaredTranslationPaths = Object.values(
+      flattenStringLeaves(workspaceShellTranslationKeys),
+    ).map((key) => key.replace("workspace-shell.", ""));
+
+    expect(Object.keys(chineseResourcePaths).sort()).toEqual(
+      Object.keys(englishResourcePaths).sort(),
+    );
+
+    for (const locale of workspaceShellLocales) {
+      const resourcePaths = flattenStringLeaves(getWorkspaceShellResource(locale));
+
+      for (const path of declaredTranslationPaths) {
+        expect(resourcePaths[path], `${locale} is missing ${path}`).toEqual(expect.any(String));
+        expect(
+          resourcePaths[path].length,
+          `${locale} has an empty value for ${path}`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  test("keeps route labels, empty states, join/create feedback, and core terms aligned by locale", () => {
+    const routeSamples = [
+      { route: { name: "dashboard" } as const, resourceKey: "dashboard" },
+      { route: { name: "personal-workspace" } as const, resourceKey: "personalWorkspace" },
+      { route: { name: "team-list" } as const, resourceKey: "teamList" },
+      { route: { name: "team-detail", teamId: "team-1" } as const, resourceKey: "teamDetail" },
+      { route: { name: "join-team" } as const, resourceKey: "joinTeam" },
+      { route: { name: "create-team" } as const, resourceKey: "createTeam" },
+    ] as const;
+
+    for (const locale of workspaceShellLocales) {
+      const resource = getWorkspaceShellResource(locale);
+
+      expect(resource.destinations.dashboard.label).toBe(resource.terms.dashboard);
+      expect(resource.destinations.personalWorkspace.label).toBe(resource.terms.myWorkspace);
+      expect(resource.navigation.teamLabel).toBe(resource.terms.team);
+
+      for (const sample of routeSamples) {
+        expect(getWorkspaceRouteTitle(sample.route, undefined, locale)).toBe(
+          resource.destinations[sample.resourceKey].label,
+        );
+      }
+
+      expect(
+        [
+          resource.pages.workspace.emptyNoWorkspaceTitle,
+          resource.pages.workspace.emptyPersonalTitle,
+          resource.pages.workspace.emptyTeamTitle,
+          resource.pages.workspace.emptyMatchTitle,
+          resource.pages.teamList.emptyTitle,
+          resource.pages.teamList.dashboardEmptyTitle,
+        ].every((value) => value.length > 0),
+      ).toBe(true);
+      expect(
+        getCreateInviteSuccessOutcome(
+          {
+            token: "invite-token",
+            expiresAt: "2026-04-28T00:00:00.000Z",
+          },
+          locale === "en" ? "desktop or dashboard join flow" : "桌面端或仪表盘加入流程",
+          locale,
+        ).message,
+      ).toBe(
+        resource.feedback.createInviteReady.replace(
+          "{{joinSurface}}",
+          locale === "en" ? "desktop or dashboard join flow" : "桌面端或仪表盘加入流程",
+        ),
+      );
+      expect(
+        getJoinTeamSuccessOutcome(
+          {
+            id: "team-joined",
+            name: locale === "en" ? "Research" : "研究团队",
+            teamId: "team-joined",
+          },
+          {
+            locale,
+            navigationLabel: locale === "en" ? "shared navigation" : "共享导航",
+          },
+        ).routeNotice,
+      ).toBe(
+        resource.feedback.joinTeamSuccess
+          .replace("{{teamName}}", locale === "en" ? "Research" : "研究团队")
+          .replace("{{navigationLabel}}", locale === "en" ? "shared navigation" : "共享导航"),
+      );
+    }
   });
 });
 

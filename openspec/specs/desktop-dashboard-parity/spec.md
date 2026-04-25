@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define desktop dashboard parity expectations for signed-in workspace navigation and team-oriented destinations.
+
+## Requirements
 
 ### Requirement: Desktop uses dashboard as the signed-in default entry
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define team workspace membership, access boundaries, and team-scoped task visibility.
+
+## Requirements
 
 ### Requirement: Users can belong to multiple team workspaces
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define team invite creation and redemption behavior for authenticated users and team workspaces.
+
+## Requirements
 
 ### Requirement: Team members can generate team invites
 

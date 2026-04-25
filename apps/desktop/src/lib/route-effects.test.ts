@@ -12,6 +12,14 @@ import {
   parseDesktopRoute,
 } from "../routing/routes.ts";
 
+const localizedRouteTitleCases = [
+  [{ name: "dashboard" } as const, "Dashboard", "仪表盘"],
+  [{ name: "personal-workspace" } as const, "My workspace", "我的工作区"],
+  [{ name: "team-list" } as const, "Teams", "团队"],
+  [{ name: "join-team" } as const, "Join team", "加入团队"],
+  [{ name: "create-team" } as const, "Create team", "创建团队"],
+] as const;
+
 describe("desktop routes", () => {
   test("uses dashboard as the signed-in default route", () => {
     expect(getDefaultDesktopRoute()).toEqual({ name: "dashboard" });
@@ -26,6 +34,13 @@ describe("desktop routes", () => {
     expect(getDesktopRouteTitle({ name: "team-detail", teamId: "team-1" }, "Research")).toBe(
       "Research",
     );
+  });
+
+  test("resolves localized route labels from the shared workspace-shell contract", () => {
+    for (const [route, englishTitle, chineseTitle] of localizedRouteTitleCases) {
+      expect(getDesktopRouteTitle(route)).toBe(englishTitle);
+      expect(getDesktopRouteTitle(route, undefined, "zh-CN")).toBe(chineseTitle);
+    }
   });
 
   test("treats team detail pages as active within the joined teams navigation group", () => {
@@ -62,9 +77,18 @@ describe("desktop routes", () => {
 
   test("maps desktop paths onto the shared route contract", () => {
     expect(parseDesktopRoute("/")).toEqual({ name: "dashboard" });
+    expect(parseDesktopRoute("/my-workspace")).toEqual({
+      name: "personal-workspace",
+      section: "tasks",
+    });
     expect(parseDesktopRoute("/my-workspace/date")).toEqual({
       name: "personal-workspace",
       section: "date",
+    });
+    expect(parseDesktopRoute("/teams/team-1")).toEqual({
+      name: "team-detail",
+      teamId: "team-1",
+      section: "tasks",
     });
     expect(parseDesktopRoute("/teams/team-1/invite")).toEqual({
       name: "team-detail",

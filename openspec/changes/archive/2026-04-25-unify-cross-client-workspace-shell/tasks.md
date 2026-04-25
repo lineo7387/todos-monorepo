@@ -20,10 +20,10 @@
 
 - [x] 4.1 Replace duplicated workspace-shell strings in web, desktop, and mobile with shared translation keys and English/Chinese resources
 - [x] 4.2 Add locale switching or locale selection plumbing needed so the shared workspace-shell resources can render consistently on all supported clients
-- [ ] 4.3 Verify that route labels, empty states, join/create feedback, and core workspace terms remain consistent across web, desktop, and mobile in both supported languages
+- [x] 4.3 Verify that route labels, empty states, join/create feedback, and core workspace terms remain consistent across web, desktop, and mobile in both supported languages
 
 ## 5. Verification and migration cleanup
 
-- [ ] 5.1 Add automated coverage for shared route contracts, shared page helpers, localization key usage, and client-specific workspace-shell adapters
-- [ ] 5.2 Run `vp check`, `vp test --run`, `vp run website#build`, `vp run desktop#check`, `vp run desktop#build`, and `vp run mobile#check` after the convergence work lands
-- [ ] 5.3 Retire or archive the superseded `plan-mobile-workspace-parity` change once its planning intent is fully absorbed by this implementation
+- [x] 5.1 Add automated coverage for shared route contracts, shared page helpers, localization key usage, and client-specific workspace-shell adapters
+- [x] 5.2 Run `vp check`, `vp test --run`, `vp run website#build`, `vp run desktop#check`, `vp run desktop#build`, and `vp run mobile#check` after the convergence work lands
+- [x] 5.3 Retire or archive the superseded `plan-mobile-workspace-parity` change once its planning intent is fully absorbed by this implementation
