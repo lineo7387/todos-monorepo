@@ -6,6 +6,7 @@ allowBuilds:
   electron: true
 
 catalog:
+  "@gorhom/bottom-sheet": ^5.2.10
   "@supabase/supabase-js": ^2.103.3
   "@types/node": ^24.12.2
   "@types/react": ^19.2.14
@@ -14,9 +15,14 @@ catalog:
   expo: ~55.0.0
   expo-secure-store: ^55.0.13
   react: 19.2.0
+  react-day-picker: ^9.14.0
   react-dom: 19.2.0
   react-native: 0.83.4
+  react-native-calendars: ^1.1314.0
+  react-native-gesture-handler: ^2.31.1
+  react-native-reanimated: ^4.3.0
   react-router-dom: ^7.14.2
+  recharts: ^3.8.1
   typescript: ^5.9.3
   vite: npm:@voidzero-dev/vite-plus-core@^0.1.18
   vite-plus: ^0.1.18

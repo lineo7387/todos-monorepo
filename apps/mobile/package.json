@@ -11,10 +11,14 @@
     "ios": "vp exec expo start --ios"
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "catalog:",
     "expo": "catalog:",
     "expo-secure-store": "catalog:",
     "react": "catalog:",
     "react-native": "catalog:",
+    "react-native-calendars": "catalog:",
+    "react-native-gesture-handler": "catalog:",
+    "react-native-reanimated": "catalog:",
     "todo-app": "workspace:*",
     "todo-data": "workspace:*",
     "workspace-shell": "workspace:*"

@@ -1,10 +1,17 @@
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Calendar } from "react-native-calendars";
 import type { TodoAppController, TodoAppState, TodoAppViewModel } from "todo-app";
 import { getWorkspaceShellResource, type WorkspaceShellResources } from "workspace-shell";
 
 import { Banner } from "../components/mobile-ui.tsx";
 import { MobileTodoRow } from "../components/todo-row.tsx";
-import { getMobileRouteTitle, isMobileRouteActive, type MobileRoute } from "../routing/routes.ts";
+import {
+  getMobileRouteTitle,
+  getMobileWorkspaceSection,
+  getMobileWorkspaceSectionTabs,
+  isMobileRouteActive,
+  type MobileRoute,
+} from "../routing/routes.ts";
 import { styles } from "../styles/mobile-shell.ts";
 
 type MobileTodoItem = TodoAppState["todos"][number];
@@ -211,6 +218,7 @@ function WorkspaceScreen({
   selectedDate,
   selectedDateLabel,
   selectedDateTodos,
+  markedDates,
   taskCounts,
   taskFilter,
   teamInviteCode,
@@ -247,6 +255,7 @@ function WorkspaceScreen({
   selectedDate: string;
   selectedDateLabel: string;
   selectedDateTodos: MobileTodoItem[];
+  markedDates: string[];
   taskCounts: Record<"all" | "active" | "completed", number>;
   taskFilter: "all" | "active" | "completed";
   teamInviteCode: string;
@@ -256,6 +265,7 @@ function WorkspaceScreen({
   todos: MobileTodoItem[];
 }) {
   const resource = getWorkspaceShellResource(locale);
+  const activeSection = getMobileWorkspaceSection(route);
   const emptyStateCopy = getTaskEmptyStateCopy({
     dateView,
     hasAnyTodos,
@@ -264,6 +274,24 @@ function WorkspaceScreen({
     todosLength: todos.length,
     workspace: pageWorkspace,
   });
+  const calendarMarkedDates = Object.fromEntries(
+    markedDates.map((date) => [
+      date,
+      {
+        marked: true,
+        selected: date === selectedDate,
+        selectedColor: "#1f4f46",
+      },
+    ]),
+  );
+
+  calendarMarkedDates[selectedDate] = {
+    ...calendarMarkedDates[selectedDate],
+    selected: true,
+    selectedColor: "#1f4f46",
+  };
+  const sectionTabs = getMobileWorkspaceSectionTabs(route, resource);
+  const personalWorkspaceSection = activeSection === "invite" ? "tasks" : activeSection;
 
   return (
     <View style={styles.stack}>
@@ -286,7 +314,12 @@ function WorkspaceScreen({
           {personalWorkspace ? (
             <Pressable
               disabled={pendingUi}
-              onPress={() => onNavigate({ name: "personal-workspace" })}
+              onPress={() =>
+                onNavigate({
+                  name: "personal-workspace",
+                  section: personalWorkspaceSection,
+                })
+              }
               style={[
                 styles.workspaceTab,
                 route.name === "personal-workspace" ? styles.workspaceTabActive : null,
@@ -319,7 +352,13 @@ function WorkspaceScreen({
               <Pressable
                 disabled={pendingUi}
                 key={workspace.id}
-                onPress={() => onNavigate({ name: "team-detail", teamId: workspace.teamId! })}
+                onPress={() =>
+                  onNavigate({
+                    name: "team-detail",
+                    teamId: workspace.teamId!,
+                    section: activeSection,
+                  })
+                }
                 style={[
                   styles.workspaceTab,
                   isActive ? styles.workspaceTabActive : null,
@@ -345,144 +384,208 @@ function WorkspaceScreen({
         </ScrollView>
       </View>
 
-      <View style={styles.composer}>
-        <TextInput
-          editable={canManageTodos}
-          onChangeText={onDraftTitleChange}
-          placeholder={getComposerPlaceholder(pageWorkspace, resource)}
-          style={styles.input}
-          value={draftTitle}
-        />
-        <TextInput
-          editable={canManageTodos}
-          onChangeText={onDraftDueDateChange}
-          placeholder={resource.fields.dueDatePlaceholder}
-          style={styles.input}
-          value={draftDueDate}
-        />
-        <Pressable
-          disabled={!canManageTodos}
-          onPress={onCreateTodo}
-          style={[styles.primaryButton, !canManageTodos ? styles.buttonDisabled : null]}
-        >
-          <Text style={styles.primaryButtonText}>{resource.actions.addTask}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>{resource.pages.workspace.filterPanelLabel}</Text>
-        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.filterPanelBody}</Text>
-        <View style={styles.chipRow}>
-          {(["all", "active", "completed"] as const).map((filter) => (
-            <Pressable
-              key={filter}
-              onPress={() => onTaskFilterChange(filter)}
+      <View style={styles.sectionSegment}>
+        {sectionTabs.map((entry) => (
+          <Pressable
+            disabled={pendingUi}
+            key={entry.section}
+            onPress={() => onNavigate(entry.route)}
+            style={[
+              styles.sectionSegmentButton,
+              entry.active ? styles.sectionSegmentButtonActive : null,
+              pendingUi ? styles.buttonDisabled : null,
+            ]}
+          >
+            <Text
               style={[
-                styles.filterChip,
-                taskFilter === filter ? styles.filterChipActive : null,
-                pendingUi ? styles.buttonDisabled : null,
+                styles.sectionSegmentText,
+                entry.active ? styles.sectionSegmentTextActive : null,
               ]}
             >
-              <Text
-                style={[
-                  styles.filterChipLabel,
-                  taskFilter === filter ? styles.filterChipLabelActive : null,
-                ]}
-              >
-                {getTaskFilterLabel(filter, resource)}
-              </Text>
-              <Text
-                style={[
-                  styles.filterChipCount,
-                  taskFilter === filter ? styles.filterChipLabelActive : null,
-                ]}
-              >
-                {taskCounts[filter]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+              {entry.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>{resource.pages.workspace.datePanelLabel}</Text>
-        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.datePanelBody}</Text>
-        <View style={styles.chipRow}>
-          {(["all", "due-today", "upcoming"] as const).map((view) => (
+      {activeSection === "tasks" ? (
+        <>
+          <View style={styles.composer}>
+            <TextInput
+              editable={canManageTodos}
+              onChangeText={onDraftTitleChange}
+              placeholder={getComposerPlaceholder(pageWorkspace, resource)}
+              style={styles.input}
+              value={draftTitle}
+            />
+            <TextInput
+              editable={canManageTodos}
+              onChangeText={onDraftDueDateChange}
+              placeholder={resource.fields.dueDatePlaceholder}
+              style={styles.input}
+              value={draftDueDate}
+            />
+            <View style={styles.inlineActions}>
+              <Pressable
+                disabled={!canManageTodos}
+                onPress={() => onDraftDueDateChange("")}
+                style={[styles.ghostButton, !canManageTodos ? styles.buttonDisabled : null]}
+              >
+                <Text style={styles.ghostButtonText}>{resource.actions.noDate}</Text>
+              </Pressable>
+            </View>
             <Pressable
-              key={view}
-              onPress={() => onDateViewChange(view)}
-              style={[
-                styles.filterChip,
-                dateView === view ? styles.filterChipActive : null,
-                pendingUi ? styles.buttonDisabled : null,
-              ]}
+              disabled={!canManageTodos}
+              onPress={onCreateTodo}
+              style={[styles.primaryButton, !canManageTodos ? styles.buttonDisabled : null]}
             >
-              <Text
-                style={[
-                  styles.filterChipLabel,
-                  dateView === view ? styles.filterChipLabelActive : null,
-                ]}
-              >
-                {getDateViewLabel(view, resource)}
-              </Text>
-              <Text
-                style={[
-                  styles.filterChipCount,
-                  dateView === view ? styles.filterChipLabelActive : null,
-                ]}
-              >
-                {dateViewCounts[view]}
-              </Text>
+              <Text style={styles.primaryButtonText}>{resource.actions.addTask}</Text>
             </Pressable>
-          ))}
-        </View>
-      </View>
+          </View>
 
-      <View style={styles.filterPanel}>
-        <Text style={styles.sectionTitle}>{resource.pages.workspace.selectedDateLabel}</Text>
-        <Text style={styles.sectionSubtitle}>{resource.pages.workspace.datePanelHeading}</Text>
-        <TextInput
-          onChangeText={onSelectedDateChange}
-          placeholder={resource.fields.selectedDatePlaceholder}
-          style={styles.input}
-          value={selectedDate}
-        />
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryPrimary}>{selectedDateLabel}</Text>
-          <Text style={styles.summarySecondary}>
-            {resource.pages.workspace.selectedDateSummary
-              .replace("{{count}}", String(selectedDateTodos.length))
-              .replace("{{plural}}", selectedDateTodos.length === 1 ? "" : "s")}
-          </Text>
-        </View>
-        {selectedDateTodos.length === 0 ? (
-          <Text style={styles.body}>
-            {resource.pages.workspace.selectedDateEmpty.replace(
-              "{{taskFilter}}",
-              getTaskFilterLabel(taskFilter, resource).toLowerCase(),
-            )}
-          </Text>
-        ) : (
-          <View style={styles.stack}>
-            {selectedDateTodos.map((todo) => (
-              <View key={todo.id} style={styles.selectedDateCard}>
-                <Text style={styles.selectedDateTitle}>{todo.title}</Text>
-                <Text style={styles.selectedDateMeta}>
-                  {todo.completed
-                    ? resource.pages.workspace.taskFilterLabels.completed
-                    : resource.pages.workspace.taskFilterLabels.active}
-                  {todo.dueDate
-                    ? `, ${resource.pages.todo.due.replace("{{date}}", todo.dueDate)}`
-                    : ""}
+          <View style={styles.filterPanel}>
+            <Text style={styles.sectionTitle}>{resource.pages.workspace.filterPanelLabel}</Text>
+            <Text style={styles.sectionSubtitle}>{resource.pages.workspace.filterPanelBody}</Text>
+            <View style={styles.chipRow}>
+              {(["all", "active", "completed"] as const).map((filter) => (
+                <Pressable
+                  key={filter}
+                  onPress={() => onTaskFilterChange(filter)}
+                  style={[
+                    styles.filterChip,
+                    taskFilter === filter ? styles.filterChipActive : null,
+                    pendingUi ? styles.buttonDisabled : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipLabel,
+                      taskFilter === filter ? styles.filterChipLabelActive : null,
+                    ]}
+                  >
+                    {getTaskFilterLabel(filter, resource)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.filterChipCount,
+                      taskFilter === filter ? styles.filterChipLabelActive : null,
+                    ]}
+                  >
+                    {taskCounts[filter]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {emptyStateCopy ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.eyebrow}>{emptyStateCopy.eyebrow}</Text>
+              <Text style={styles.sectionTitle}>{emptyStateCopy.title}</Text>
+              <Text style={styles.body}>{emptyStateCopy.body}</Text>
+            </View>
+          ) : null}
+
+          {todos.map((todo) => (
+            <MobileTodoRow
+              disabled={!canManageTodos}
+              isEditing={editingTodoId === todo.id}
+              key={todo.id}
+              onCancelEdit={onCancelEdit}
+              onDelete={onDeleteTodo}
+              onSaveEdit={onSaveEdit}
+              onStartEdit={onStartEdit}
+              onToggleComplete={onToggleComplete}
+              locale={locale}
+              todo={todo}
+            />
+          ))}
+        </>
+      ) : null}
+
+      {activeSection === "date" ? (
+        <View style={styles.filterPanel}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.sectionTitle}>{resource.pages.workspace.datePanelLabel}</Text>
+            <Text style={styles.sectionSubtitle}>{resource.pages.workspace.datePanelBody}</Text>
+          </View>
+          <Calendar
+            markedDates={calendarMarkedDates}
+            onDayPress={(day) => onSelectedDateChange(day.dateString)}
+            theme={{
+              arrowColor: "#1f4f46",
+              selectedDayBackgroundColor: "#1f4f46",
+              todayTextColor: "#1f4f46",
+            }}
+          />
+          <View style={styles.chipRow}>
+            {(["all", "due-today", "upcoming"] as const).map((view) => (
+              <Pressable
+                key={view}
+                onPress={() => onDateViewChange(view)}
+                style={[
+                  styles.filterChip,
+                  dateView === view ? styles.filterChipActive : null,
+                  pendingUi ? styles.buttonDisabled : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterChipLabel,
+                    dateView === view ? styles.filterChipLabelActive : null,
+                  ]}
+                >
+                  {getDateViewLabel(view, resource)}
                 </Text>
-              </View>
+                <Text
+                  style={[
+                    styles.filterChipCount,
+                    dateView === view ? styles.filterChipLabelActive : null,
+                  ]}
+                >
+                  {dateViewCounts[view]}
+                </Text>
+              </Pressable>
             ))}
           </View>
-        )}
-      </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryPrimary}>{selectedDateLabel}</Text>
+            <Text style={styles.summarySecondary}>
+              {resource.pages.workspace.selectedDateSummary
+                .replace("{{count}}", String(selectedDateTodos.length))
+                .replace("{{plural}}", selectedDateTodos.length === 1 ? "" : "s")}
+            </Text>
+          </View>
+          {selectedDateTodos.length === 0 ? (
+            <Text style={styles.body}>
+              {resource.pages.workspace.selectedDateEmpty.replace(
+                "{{taskFilter}}",
+                getTaskFilterLabel(taskFilter, resource).toLowerCase(),
+              )}
+            </Text>
+          ) : (
+            <View style={styles.stack}>
+              {selectedDateTodos.map((todo) => (
+                <View key={todo.id} style={styles.selectedDateCard}>
+                  <Text style={styles.selectedDateTitle}>{todo.title}</Text>
+                  <Text style={styles.selectedDateMeta}>
+                    {todo.completed
+                      ? resource.pages.workspace.taskFilterLabels.completed
+                      : resource.pages.workspace.taskFilterLabels.active}
+                    {todo.dueDate
+                      ? `, ${resource.pages.todo.due.replace("{{date}}", todo.dueDate)}`
+                      : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
 
-      {route.name === "team-detail" && pageWorkspace?.kind === "team" ? (
+      {activeSection === "invite" &&
+      route.name === "team-detail" &&
+      pageWorkspace?.kind === "team" ? (
         <View style={styles.filterPanel}>
           <Text style={styles.sectionTitle}>{resource.pages.workspace.invitePanelLabel}</Text>
           <Text style={styles.sectionSubtitle}>
@@ -517,29 +620,6 @@ function WorkspaceScreen({
           ) : null}
         </View>
       ) : null}
-
-      {emptyStateCopy ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.eyebrow}>{emptyStateCopy.eyebrow}</Text>
-          <Text style={styles.sectionTitle}>{emptyStateCopy.title}</Text>
-          <Text style={styles.body}>{emptyStateCopy.body}</Text>
-        </View>
-      ) : null}
-
-      {todos.map((todo) => (
-        <MobileTodoRow
-          disabled={!canManageTodos}
-          isEditing={editingTodoId === todo.id}
-          key={todo.id}
-          onCancelEdit={onCancelEdit}
-          onDelete={onDeleteTodo}
-          onSaveEdit={onSaveEdit}
-          onStartEdit={onStartEdit}
-          onToggleComplete={onToggleComplete}
-          locale={locale}
-          todo={todo}
-        />
-      ))}
     </View>
   );
 }
@@ -557,6 +637,7 @@ export function MobileSignedInPages({
   joinFeedback,
   joinInviteCode,
   locale,
+  markedDates,
   onCancelEdit,
   onCreateTeam,
   onCreateTeamInvite,
@@ -603,6 +684,7 @@ export function MobileSignedInPages({
   } | null;
   joinInviteCode: string;
   locale?: string | null;
+  markedDates: string[];
   onCancelEdit: () => void;
   onCreateTeam: () => void;
   onCreateTeamInvite: () => void;
@@ -869,6 +951,7 @@ export function MobileSignedInPages({
           selectedDate={selectedDate}
           selectedDateLabel={selectedDateLabel}
           selectedDateTodos={selectedDateTodos}
+          markedDates={markedDates}
           taskCounts={taskCounts}
           taskFilter={taskFilter}
           teamInviteCode={teamInviteCode}

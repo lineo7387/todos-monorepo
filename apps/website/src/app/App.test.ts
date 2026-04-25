@@ -72,7 +72,7 @@ describe("resolveWorkspaceRouteEffect", () => {
 });
 
 describe("website route adapter", () => {
-  test("uses the shared signed-in route contract without desktop section aliases", () => {
+  test("uses the shared signed-in route contract with workspace sections", () => {
     expect(getWebsiteSignedInRoutePatterns()).toEqual([
       { key: "dashboard", pageId: "dashboard", path: "/" },
       { key: "personal-workspace", pageId: "personal-workspace", path: "/my-workspace" },
@@ -80,6 +80,15 @@ describe("website route adapter", () => {
       { key: "team-detail", pageId: "team-detail", path: "/teams/:teamId" },
       { key: "join-team", pageId: "join-team", path: "/teams/join" },
       { key: "create-team", pageId: "create-team", path: "/teams/new" },
+      {
+        key: "personal-workspace-tasks",
+        pageId: "personal-workspace",
+        path: "/my-workspace/tasks",
+      },
+      { key: "personal-workspace-date", pageId: "personal-workspace", path: "/my-workspace/date" },
+      { key: "team-detail-tasks", pageId: "team-detail", path: "/teams/:teamId/tasks" },
+      { key: "team-detail-date", pageId: "team-detail", path: "/teams/:teamId/date" },
+      { key: "team-detail-invite", pageId: "team-detail", path: "/teams/:teamId/invite" },
     ]);
   });
 
@@ -90,16 +99,26 @@ describe("website route adapter", () => {
     }
   });
 
-  test("maps browser paths to canonical routes without desktop-only section aliases", () => {
+  test("maps browser paths to canonical section routes", () => {
     expect(parseWebsiteRoute("/")).toEqual({ name: "dashboard" });
-    expect(parseWebsiteRoute("/my-workspace")).toEqual({ name: "personal-workspace" });
-    expect(parseWebsiteRoute("/my-workspace/date")).toEqual({ name: "dashboard" });
+    expect(parseWebsiteRoute("/my-workspace")).toEqual({
+      name: "personal-workspace",
+      section: "tasks",
+    });
+    expect(parseWebsiteRoute("/my-workspace/date")).toEqual({
+      name: "personal-workspace",
+      section: "date",
+    });
     expect(parseWebsiteRoute("/teams/team-1/date")).toEqual({
       name: "team-detail",
       teamId: "team-1",
+      section: "date",
     });
     expect(getWebsiteRouteHref({ name: "personal-workspace", section: "date" })).toBe(
       "/my-workspace/date",
+    );
+    expect(getWebsiteRouteHref({ name: "team-detail", teamId: "team-1", section: "invite" })).toBe(
+      "/teams/team-1/invite",
     );
   });
 });

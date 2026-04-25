@@ -9,6 +9,7 @@ import {
 } from "todo-data";
 import {
   deriveWorkspaceTaskView,
+  getNextWorkspaceShellLocale,
   getJoinInviteFailureFeedback,
   getJoinTeamSuccessOutcome,
   getWorkspaceShellResource,
@@ -136,7 +137,7 @@ export function WebsiteAppShell() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [draftTitle, setDraftTitle] = useState("");
-  const [draftDueDate, setDraftDueDate] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState(getCurrentDateValue);
   const [draftTeamName, setDraftTeamName] = useState("");
   const [dateView, setDateView] = useState<WorkspaceDateView>("all");
   const [selectedDate, setSelectedDate] = useState(getCurrentDateValue);
@@ -149,6 +150,9 @@ export function WebsiteAppShell() {
   const [teamInviteExpiresAt, setTeamInviteExpiresAt] = useState<string | null>(null);
   const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
   const [joinInviteCode, setJoinInviteCode] = useState("");
+  const [workspaceShellLocale, setWorkspaceShellLocale] = useState(
+    () => bootstrap.workspaceShellLocale,
+  );
   const location = useLocation();
   const routerNavigate = useRouterNavigate();
   const navigationType = useNavigationType();
@@ -202,7 +206,7 @@ export function WebsiteAppShell() {
 
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
-  const shellResource = getWorkspaceShellResource(bootstrap.workspaceShellLocale);
+  const shellResource = getWorkspaceShellResource(workspaceShellLocale);
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const personalWorkspace =
     viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
@@ -217,13 +221,42 @@ export function WebsiteAppShell() {
   const pageWorkspace =
     route.name === "personal-workspace" ? personalWorkspace : routedTeamWorkspace;
   const todayDateValue = getCurrentDateValue();
-  const { taskCounts, dateViewCounts, filteredTodos, selectedDateTodos } = deriveWorkspaceTaskView({
+  const { taskCounts, dateViewCounts, selectedDateTodos } = deriveWorkspaceTaskView({
     dateView,
     selectedDate,
     taskFilter,
     todayDateValue,
     todos: viewModel.todos,
   });
+  const statusFilteredTodos = viewModel.todos.filter((todo) => {
+    if (taskFilter === "active") {
+      return !todo.completed;
+    }
+
+    if (taskFilter === "completed") {
+      return todo.completed;
+    }
+
+    return true;
+  });
+  const markedDates = viewModel.todos
+    .filter((todo) => {
+      if (!todo.dueDate) {
+        return false;
+      }
+
+      if (taskFilter === "active") {
+        return !todo.completed;
+      }
+
+      if (taskFilter === "completed") {
+        return todo.completed;
+      }
+
+      return true;
+    })
+    .map((todo) => todo.dueDate!)
+    .filter((date, index, dates) => dates.indexOf(date) === index);
 
   function navigate(nextRoute: WebsiteRoute, options?: { replace?: boolean }) {
     const href = getWebsiteRouteHref(nextRoute);
@@ -248,7 +281,7 @@ export function WebsiteAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
-      locale: bootstrap.workspaceShellLocale,
+      locale: workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -271,6 +304,7 @@ export function WebsiteAppShell() {
     viewModel.activeWorkspace?.id,
     viewModel.isAuthenticated,
     viewModel.isLoading,
+    workspaceShellLocale,
   ]);
 
   async function handleSignInSubmit(event: FormEvent<HTMLFormElement>) {
@@ -306,7 +340,7 @@ export function WebsiteAppShell() {
       })
       .then(() => {
         setDraftTitle("");
-        setDraftDueDate("");
+        setDraftDueDate(getCurrentDateValue());
       })
       .catch(() => {});
   }
@@ -407,7 +441,7 @@ export function WebsiteAppShell() {
       .redeemTeamInvite(joinInviteCode)
       .then((workspace) => {
         const outcome = getJoinTeamSuccessOutcome(workspace, {
-          locale: bootstrap.workspaceShellLocale,
+          locale: workspaceShellLocale,
         });
         setJoinInviteCode("");
         navigate(outcome.route);
@@ -420,7 +454,7 @@ export function WebsiteAppShell() {
             error,
             lastError: latestState.lastError,
             lastErrorKind: latestState.lastErrorKind,
-            locale: bootstrap.workspaceShellLocale,
+            locale: workspaceShellLocale,
           }),
         );
       });
@@ -453,46 +487,52 @@ export function WebsiteAppShell() {
           <div className="workspace-header__title">
             <p className="workspace-header__eyebrow">Web client</p>
             <h1>
-              {getWorkspaceRouteTitle(
-                route,
-                routedTeamWorkspace?.name,
-                bootstrap.workspaceShellLocale,
-              )}
+              {getWorkspaceRouteTitle(route, routedTeamWorkspace?.name, workspaceShellLocale)}
             </h1>
           </div>
 
-          {viewModel.isAuthenticated ? (
-            <div className="workspace-header__session">
-              {state.session?.email ? (
-                <span className="account-badge" title={state.session.email}>
-                  {state.session.email}
-                </span>
-              ) : null}
-              <div className="workspace-header__actions">
+          <div className="workspace-header__session">
+            {state.session?.email ? (
+              <span className="account-badge" title={state.session.email}>
+                {state.session.email}
+              </span>
+            ) : null}
+            <div className="workspace-header__actions">
+              {viewModel.isAuthenticated ? (
                 <button
                   disabled={pendingUi}
                   onClick={() => void controller.refresh().catch(() => {})}
                   type="button"
                 >
-                  Refresh
+                  {shellResource.actions.refresh}
                 </button>
+              ) : null}
+              <button
+                onClick={() =>
+                  setWorkspaceShellLocale(getNextWorkspaceShellLocale(workspaceShellLocale))
+                }
+                type="button"
+              >
+                {shellResource.actions.languageToggle}
+              </button>
+              {viewModel.isAuthenticated ? (
                 <button
                   disabled={pendingUi}
                   onClick={() => void controller.signOut().catch(() => {})}
                   type="button"
                 >
-                  Sign out
+                  {shellResource.actions.signOut}
                 </button>
-              </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </header>
 
         <div className="page-stack">
           {viewModel.isAuthenticated ? (
             <TopLevelNavigation
               currentRoute={route}
-              locale={bootstrap.workspaceShellLocale}
+              locale={workspaceShellLocale}
               onNavigate={navigate}
               personalWorkspace={personalWorkspace}
               teams={teamWorkspaces}
@@ -551,12 +591,12 @@ export function WebsiteAppShell() {
               editingDueDate={editingDueDate}
               editingTitle={editingTitle}
               editingTodoId={editingTodoId}
-              emptyStateCopy={getEmptyStateCopy(pageWorkspace, bootstrap.workspaceShellLocale)}
-              filteredTodos={filteredTodos}
+              emptyStateCopy={getEmptyStateCopy(pageWorkspace, workspaceShellLocale)}
+              filteredTodos={statusFilteredTodos}
               hasAnyTodos={viewModel.todos.length > 0}
               joinFeedback={joinFeedback}
               joinInviteCode={joinInviteCode}
-              locale={bootstrap.workspaceShellLocale}
+              locale={workspaceShellLocale}
               onCancelEditing={cancelEditing}
               onCreateSubmit={(event) => void handleCreateSubmit(event)}
               onCreateTeamInvite={() => void handleCreateTeamInvite()}
@@ -572,6 +612,7 @@ export function WebsiteAppShell() {
               onInviteCodeChange={handleJoinInviteCodeChange}
               onJoinTeamSubmit={(event) => void handleJoinTeamSubmit(event)}
               onNavigate={navigate}
+              markedDates={markedDates}
               onCopyTeamInviteCode={() =>
                 void (teamInviteCode
                   ? copyToClipboard(teamInviteCode, shellResource.feedback.copyInviteCodeSuccess)

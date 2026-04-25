@@ -4,5 +4,5 @@ import {
 } from "workspace-shell";
 
 export function getWebsiteSignedInRoutePatterns(): WorkspaceShellSignedInRoutePattern[] {
-  return getWorkspaceShellSignedInRoutePatterns();
+  return getWorkspaceShellSignedInRoutePatterns({ includeWorkspaceSections: true });
 }

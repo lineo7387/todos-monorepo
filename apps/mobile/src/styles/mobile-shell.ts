@@ -42,6 +42,25 @@ export const styles = StyleSheet.create({
     color: "#fef3c7",
     fontFamily: "Courier",
   },
+  heroHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  languageButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#d9efe8",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  languageButtonText: {
+    color: "#1f4f46",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   headerRow: {
     gap: 16,
   },
@@ -243,6 +262,32 @@ export const styles = StyleSheet.create({
   },
   workspaceTabMetaActive: {
     color: "#1f4f46",
+  },
+  sectionSegment: {
+    flexDirection: "row",
+    gap: 8,
+    borderRadius: 18,
+    backgroundColor: "#e8dfd1",
+    padding: 6,
+  },
+  sectionSegmentButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  sectionSegmentButtonActive: {
+    backgroundColor: "#1f4f46",
+  },
+  sectionSegmentText: {
+    color: "#4b3c2a",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  sectionSegmentTextActive: {
+    color: "#fffdf6",
   },
   heroActionGrid: {
     gap: 10,

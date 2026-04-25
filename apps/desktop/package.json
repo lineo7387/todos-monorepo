@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "react": "catalog:",
+    "react-day-picker": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:",
+    "recharts": "catalog:",
     "todo-app": "workspace:*",
     "todo-data": "workspace:*",
     "workspace-shell": "workspace:*"

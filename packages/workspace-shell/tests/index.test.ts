@@ -7,6 +7,7 @@ import {
   getDefaultWorkspaceRoute,
   getJoinInviteFailureFeedback,
   getJoinTeamSuccessOutcome,
+  getNextWorkspaceShellLocale,
   getWorkspaceShellSignedInRoutePatterns,
   getWorkspaceShellResource,
   getWorkspaceShellRouteHref,
@@ -16,10 +17,12 @@ import {
   isWorkspaceRouteActive,
   normalizeWorkspaceShellLocale,
   parseWorkspaceShellRoute,
+  workspaceShellPersonalSections,
   resolveWorkspaceRouteEffect,
   workspaceShellLocales,
   workspaceShellPageIds,
   workspaceShellResources,
+  workspaceShellTeamSections,
   workspaceShellTranslationKeys,
   workspaceShellTranslationNamespaces,
 } from "../src/index.ts";
@@ -187,6 +190,36 @@ describe("workspace-shell route contract", () => {
     ]);
   });
 
+  test("keeps workspace section sets and active states consistent", () => {
+    expect(workspaceShellPersonalSections).toEqual(["tasks", "date"]);
+    expect(workspaceShellTeamSections).toEqual(["tasks", "date", "invite"]);
+    expect(
+      getWorkspaceShellRouteHref(
+        { name: "personal-workspace", section: "tasks" },
+        { includeDefaultWorkspaceSection: true },
+      ),
+    ).toBe("/my-workspace/tasks");
+    expect(
+      getWorkspaceShellRouteHref(
+        { name: "team-detail", teamId: "team-1", section: "date" },
+        { includeDefaultWorkspaceSection: true },
+      ),
+    ).toBe("/teams/team-1/date");
+    expect(
+      isWorkspaceRouteActive(
+        { name: "team-detail", teamId: "team-1", section: "invite" },
+        { name: "team-detail", teamId: "team-1", section: "tasks" },
+      ),
+    ).toBe(true);
+    expect(
+      parseWorkspaceShellRoute("/teams/team-1/tasks", { includeWorkspaceSections: true }),
+    ).toEqual({
+      name: "team-detail",
+      teamId: "team-1",
+      section: "tasks",
+    });
+  });
+
   test("defines shared English and Chinese resource trees for core workspace terminology", () => {
     expect(workspaceShellLocales).toEqual(["en", "zh-CN"]);
     expect(workspaceShellResources.en.terms).toEqual({
@@ -209,7 +242,11 @@ describe("workspace-shell route contract", () => {
     expect(getWorkspaceShellResource("zh").pages.workspace.taskFilterLabels.active).toBe("进行中");
     expect(getWorkspaceShellResource("zh").pages.workspace.sectionLabels.invite).toBe("邀请");
     expect(getWorkspaceShellResource("zh").pages.todo.waitingForSupabase).toBe("等待 Supabase");
+    expect(getWorkspaceShellResource("en").actions.languageToggle).toBe("中文");
+    expect(getWorkspaceShellResource("zh").actions.languageToggle).toBe("English");
     expect(normalizeWorkspaceShellLocale("en-US")).toBe("en");
+    expect(getNextWorkspaceShellLocale("en-US")).toBe("zh-CN");
+    expect(getNextWorkspaceShellLocale("zh-CN")).toBe("en");
   });
 
   test("keeps localization resources structurally aligned and covers declared translation keys", () => {
@@ -348,6 +385,32 @@ describe("workspace-shell pure helpers", () => {
       "todo-completed-upcoming",
     ]);
     expect(result.selectedDateTodos.map((todo) => todo.id)).toEqual(["todo-completed-upcoming"]);
+  });
+
+  test("selected date inspection only includes matching optional due dates", () => {
+    const activeResult = deriveWorkspaceTaskView({
+      dateView: "all",
+      selectedDate: "2026-04-21",
+      taskFilter: "active",
+      todayDateValue: "2026-04-21",
+      todos,
+    });
+
+    const completedResult = deriveWorkspaceTaskView({
+      dateView: "all",
+      selectedDate: "2026-04-21",
+      taskFilter: "completed",
+      todayDateValue: "2026-04-21",
+      todos,
+    });
+
+    expect(activeResult.filteredTodos.map((todo) => todo.id)).toEqual([
+      "todo-undated-active",
+      "todo-due-today",
+      "todo-upcoming",
+    ]);
+    expect(activeResult.selectedDateTodos.map((todo) => todo.id)).toEqual(["todo-due-today"]);
+    expect(completedResult.selectedDateTodos).toEqual([]);
   });
 
   test("shares join/create flow helpers across website and desktop surfaces", () => {

@@ -662,6 +662,19 @@ h3 {
   min-width: 180px;
 }
 
+.composer__quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.composer__quick-actions button {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+
 .workspace-subnav button {
   background: rgba(255, 255, 255, 0.68);
   border: 1px solid var(--border);
@@ -697,6 +710,40 @@ h3 {
   align-items: center;
   padding: 18px 22px;
   background: linear-gradient(180deg, rgba(255, 252, 246, 0.92) 0%, rgba(246, 238, 222, 0.92) 100%);
+}
+
+.date-section-panel {
+  display: grid;
+  gap: 18px;
+  padding: 18px 22px;
+  background: rgba(255, 252, 246, 0.92);
+}
+
+.date-section-panel h3 {
+  margin-top: 0.45rem;
+  font: 600 clamp(1.15rem, 2vw, 1.45rem) / 1.05 var(--serif);
+}
+
+.date-section-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(240px, max-content) minmax(260px, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.date-section-panel .rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-day_button-border-radius: 12px;
+  margin: 0;
+}
+
+.date-section-panel .rdp-day.due .rdp-day_button {
+  border-color: var(--accent);
+}
+
+.date-summary-chart {
+  min-width: 0;
+  height: 190px;
 }
 
 .workspace-switcher__copy p:last-child,
@@ -943,6 +990,7 @@ h3 {
   .page-intro,
   .invite-panel__header,
   .selected-date-panel__header,
+  .date-section-panel__grid,
   .task-filter-panel {
     flex-direction: column;
   }

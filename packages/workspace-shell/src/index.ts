@@ -15,6 +15,9 @@ export type WorkspaceShellTeamSection = WorkspaceShellWorkspaceSection | "invite
 export type WorkspaceTaskFilter = "all" | "active" | "completed";
 export type WorkspaceDateView = "all" | "due-today" | "upcoming";
 
+export const workspaceShellPersonalSections = ["tasks", "date"] as const;
+export const workspaceShellTeamSections = ["tasks", "date", "invite"] as const;
+
 export interface WorkspaceShellRouteParamMap {
   dashboard: Record<string, never>;
   "personal-workspace": {
@@ -184,6 +187,8 @@ export interface WorkspaceShellResources {
     edit: string;
     joinTeam: string;
     joiningTeam: string;
+    languageToggle: string;
+    noDate: string;
     refresh: string;
     save: string;
     signOut: string;
@@ -444,6 +449,8 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       edit: "Edit",
       joinTeam: "Join team",
       joiningTeam: "Joining team...",
+      languageToggle: "中文",
+      noDate: "No date",
       refresh: "Refresh",
       save: "Save",
       signOut: "Sign out",
@@ -659,6 +666,8 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
       edit: "编辑",
       joinTeam: "加入团队",
       joiningTeam: "正在加入团队...",
+      languageToggle: "English",
+      noDate: "不设日期",
       refresh: "刷新",
       save: "保存",
       signOut: "退出登录",
@@ -952,6 +961,10 @@ export function normalizeWorkspaceShellLocale(
 
 export function getWorkspaceShellResource(locale?: string | null): WorkspaceShellResources {
   return workspaceShellResources[normalizeWorkspaceShellLocale(locale)];
+}
+
+export function getNextWorkspaceShellLocale(locale?: string | null): WorkspaceShellLocale {
+  return normalizeWorkspaceShellLocale(locale) === "en" ? "zh-CN" : "en";
 }
 
 export function getDefaultWorkspaceRoute(): WorkspaceShellRoute {

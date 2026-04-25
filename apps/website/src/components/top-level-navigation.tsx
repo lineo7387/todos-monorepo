@@ -71,7 +71,7 @@ export function TopLevelNavigation({
           isActive: isWorkspaceRouteActive(currentRoute, { name: "personal-workspace" }),
           key: "personal-workspace",
           label: resource.destinations.personalWorkspace.label,
-          route: { name: "personal-workspace" } satisfies WebsiteRoute,
+          route: { name: "personal-workspace", section: "tasks" } satisfies WebsiteRoute,
         },
         {
           description: resource.navigation.primaryItems.teamList,
@@ -105,6 +105,7 @@ export function TopLevelNavigation({
         const route = {
           name: "team-detail",
           teamId: team.teamId ?? team.id,
+          section: "tasks",
         } satisfies WebsiteRoute;
 
         return {

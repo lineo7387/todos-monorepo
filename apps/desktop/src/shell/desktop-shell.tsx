@@ -18,6 +18,7 @@ import {
   WorkspaceShellSignedInJoinTeamPage,
   WorkspaceShellSignedInTeamListPage,
   WorkspaceShellSignedInWorkspacePage,
+  getNextWorkspaceShellLocale,
   getWorkspaceShellResource,
   workspaceShellPageIds,
 } from "workspace-shell";
@@ -171,7 +172,7 @@ export function DesktopAppShell() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [draftTitle, setDraftTitle] = useState("");
-  const [draftDueDate, setDraftDueDate] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState(getCurrentDateValue);
   const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -185,6 +186,9 @@ export function DesktopAppShell() {
   const [joinInviteInput, setJoinInviteInput] = useState("");
   const [joinFeedback, setJoinFeedback] = useState<JoinFeedback | null>(null);
   const [routeNotice, setRouteNotice] = useState<string | null>(null);
+  const [workspaceShellLocale, setWorkspaceShellLocale] = useState(
+    () => bootstrap.workspaceShellLocale,
+  );
   const location = useLocation();
   const routerNavigate = useRouterNavigate();
   const navigationType = useNavigationType();
@@ -210,7 +214,7 @@ export function DesktopAppShell() {
 
   const viewModel = createTodoAppViewModel(state);
   const controller = bootstrap.controller;
-  const shellResource = getWorkspaceShellResource(bootstrap.workspaceShellLocale);
+  const shellResource = getWorkspaceShellResource(workspaceShellLocale);
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const activeWorkspace = viewModel.activeWorkspace;
   const personalWorkspace =
@@ -229,15 +233,44 @@ export function DesktopAppShell() {
       : route.name === "team-detail"
         ? routedTeamWorkspace
         : activeWorkspace;
-  const emptyStateCopy = getEmptyStateCopy(pageWorkspace, bootstrap.workspaceShellLocale);
+  const emptyStateCopy = getEmptyStateCopy(pageWorkspace, workspaceShellLocale);
   const todayDateValue = getCurrentDateValue();
-  const { filteredTodos, taskCounts, dateViewCounts, selectedDateTodos } = deriveDesktopTaskView(
+  const { taskCounts, dateViewCounts, selectedDateTodos } = deriveDesktopTaskView(
     viewModel.todos,
     taskFilter,
     dateView,
     todayDateValue,
     selectedDate,
   );
+  const statusFilteredTodos = viewModel.todos.filter((todo) => {
+    if (taskFilter === "active") {
+      return !todo.completed;
+    }
+
+    if (taskFilter === "completed") {
+      return todo.completed;
+    }
+
+    return true;
+  });
+  const markedDates = viewModel.todos
+    .filter((todo) => {
+      if (!todo.dueDate) {
+        return false;
+      }
+
+      if (taskFilter === "active") {
+        return !todo.completed;
+      }
+
+      if (taskFilter === "completed") {
+        return todo.completed;
+      }
+
+      return true;
+    })
+    .map((todo) => todo.dueDate!)
+    .filter((date, index, dates) => dates.indexOf(date) === index);
   const personalWorkspaceSection = getDesktopWorkspaceSection(route);
   const teamDetailSection = getDesktopTeamSection(route);
 
@@ -278,7 +311,7 @@ export function DesktopAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
-      locale: bootstrap.workspaceShellLocale,
+      locale: workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -301,6 +334,7 @@ export function DesktopAppShell() {
     viewModel.activeWorkspace?.id,
     viewModel.isAuthenticated,
     viewModel.isLoading,
+    workspaceShellLocale,
   ]);
 
   function navigate(nextRoute: DesktopRoute, options?: { replace?: boolean }) {
@@ -344,7 +378,7 @@ export function DesktopAppShell() {
       })
       .then(() => {
         setDraftTitle("");
-        setDraftDueDate("");
+        setDraftDueDate(getCurrentDateValue());
       })
       .catch(() => {});
   }
@@ -413,7 +447,7 @@ export function DesktopAppShell() {
     await controller
       .createTeamInvite(routedTeamWorkspace.teamId)
       .then((invite) => {
-        const outcome = getCreateInviteSuccessOutcome(invite, bootstrap.workspaceShellLocale);
+        const outcome = getCreateInviteSuccessOutcome(invite, workspaceShellLocale);
 
         setTeamInviteCode(outcome.code);
         setTeamInviteExpiresAt(outcome.expiresAt);
@@ -436,7 +470,7 @@ export function DesktopAppShell() {
       .then(async (workspace) => {
         const outcome = getJoinInviteSuccessOutcome({
           activeWorkspaceId: controller.getState().activeWorkspaceId,
-          locale: bootstrap.workspaceShellLocale,
+          locale: workspaceShellLocale,
           workspace,
         });
 
@@ -456,7 +490,7 @@ export function DesktopAppShell() {
             error,
             lastError: latestState.lastError,
             lastErrorKind: latestState.lastErrorKind,
-            locale: bootstrap.workspaceShellLocale,
+            locale: workspaceShellLocale,
           }),
         );
       });
@@ -531,40 +565,46 @@ export function DesktopAppShell() {
             <p className="workspace-header__eyebrow">Desktop client</p>
             <h1>
               {viewModel.isAuthenticated
-                ? getDesktopRouteTitle(
-                    route,
-                    routedTeamWorkspace?.name,
-                    bootstrap.workspaceShellLocale,
-                  )
+                ? getDesktopRouteTitle(route, routedTeamWorkspace?.name, workspaceShellLocale)
                 : "Todo workspace"}
             </h1>
           </div>
 
-          {viewModel.isAuthenticated ? (
-            <div className="workspace-header__session">
-              {state.session?.email ? (
-                <span className="account-badge" title={state.session.email}>
-                  {state.session.email}
-                </span>
-              ) : null}
-              <div className="workspace-header__actions">
+          <div className="workspace-header__session">
+            {state.session?.email ? (
+              <span className="account-badge" title={state.session.email}>
+                {state.session.email}
+              </span>
+            ) : null}
+            <div className="workspace-header__actions">
+              {viewModel.isAuthenticated ? (
                 <button
                   disabled={pendingUi}
                   onClick={() => void controller.refresh().catch(() => {})}
                   type="button"
                 >
-                  Refresh
+                  {shellResource.actions.refresh}
                 </button>
+              ) : null}
+              <button
+                onClick={() =>
+                  setWorkspaceShellLocale(getNextWorkspaceShellLocale(workspaceShellLocale))
+                }
+                type="button"
+              >
+                {shellResource.actions.languageToggle}
+              </button>
+              {viewModel.isAuthenticated ? (
                 <button
                   disabled={pendingUi}
                   onClick={() => void controller.signOut().catch(() => {})}
                   type="button"
                 >
-                  Sign out
+                  {shellResource.actions.signOut}
                 </button>
-              </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </header>
 
         {viewModel.loadingMessage ? (
@@ -671,7 +711,7 @@ export function DesktopAppShell() {
           <div className="page-stack">
             <DesktopTopLevelNavigation
               currentRoute={route}
-              locale={bootstrap.workspaceShellLocale}
+              locale={workspaceShellLocale}
               onNavigate={navigate}
               personalWorkspace={personalWorkspace}
               teams={teamWorkspaces.map((workspace) => ({
@@ -693,7 +733,7 @@ export function DesktopAppShell() {
                   <WorkspaceShellSignedInCreateTeamPage
                     canManageTodos={viewModel.canManageTodos}
                     draftTeamName={draftTeamName}
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
                     onDraftTeamNameChange={setDraftTeamName}
                     onSubmit={(event) => void handleCreateTeamSubmit(event)}
                     renderNavigationAction={({ className, label, route }) => (
@@ -709,7 +749,7 @@ export function DesktopAppShell() {
                 ),
                 [workspaceShellPageIds.dashboard]: (
                   <WorkspaceShellSignedInDashboardPage
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
                     personalWorkspaceName={personalWorkspace?.name ?? null}
                     renderRouteAction={({ children, className, key, route }) => (
                       <button
@@ -738,7 +778,7 @@ export function DesktopAppShell() {
                     feedback={joinFeedback}
                     inputValue={joinInviteInput}
                     isSubmitting={pendingUi}
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
                     onDismissFeedback={() => setJoinFeedback(null)}
                     onInputChange={setJoinInviteInput}
                     onSubmit={(event) => void handleJoinTeamSubmit(event)}
@@ -758,7 +798,7 @@ export function DesktopAppShell() {
                     canManageTodos={viewModel.canManageTodos}
                     composerPlaceholder={getComposerPlaceholder(
                       pageWorkspace,
-                      bootstrap.workspaceShellLocale,
+                      workspaceShellLocale,
                     )}
                     dateView={dateView}
                     dateViewCounts={dateViewCounts}
@@ -770,7 +810,8 @@ export function DesktopAppShell() {
                     emptyStateCopy={emptyStateCopy}
                     hasAnyTodos={viewModel.todos.length > 0}
                     layout="sectioned"
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
+                    markedDates={markedDates}
                     onCancelEditing={cancelEditing}
                     onCreateSubmit={(event) => void handleCreateSubmit(event)}
                     onDateViewChange={setDateView}
@@ -808,7 +849,7 @@ export function DesktopAppShell() {
                     routeTitle={getDesktopRouteTitle(
                       route,
                       routedTeamWorkspace?.name,
-                      bootstrap.workspaceShellLocale,
+                      workspaceShellLocale,
                     )}
                     sectionRoutes={[
                       {
@@ -829,7 +870,7 @@ export function DesktopAppShell() {
                     taskCounts={taskCounts}
                     taskFilter={taskFilter}
                     todoTitleError={viewModel.todoTitleError}
-                    todos={filteredTodos}
+                    todos={statusFilteredTodos}
                     workspace={pageWorkspace}
                   />
                 ),
@@ -838,7 +879,7 @@ export function DesktopAppShell() {
                     canManageTodos={viewModel.canManageTodos}
                     composerPlaceholder={getComposerPlaceholder(
                       pageWorkspace,
-                      bootstrap.workspaceShellLocale,
+                      workspaceShellLocale,
                     )}
                     dateView={dateView}
                     dateViewCounts={dateViewCounts}
@@ -850,7 +891,8 @@ export function DesktopAppShell() {
                     emptyStateCopy={emptyStateCopy}
                     hasAnyTodos={viewModel.todos.length > 0}
                     layout="sectioned"
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
+                    markedDates={markedDates}
                     onCancelEditing={cancelEditing}
                     onCreateSubmit={(event) => void handleCreateSubmit(event)}
                     onDateViewChange={setDateView}
@@ -888,7 +930,7 @@ export function DesktopAppShell() {
                     routeTitle={getDesktopRouteTitle(
                       route,
                       routedTeamWorkspace?.name,
-                      bootstrap.workspaceShellLocale,
+                      workspaceShellLocale,
                     )}
                     sectionRoutes={
                       route.name === "team-detail" && pageWorkspace?.kind === "team"
@@ -941,13 +983,13 @@ export function DesktopAppShell() {
                         : null
                     }
                     todoTitleError={viewModel.todoTitleError}
-                    todos={filteredTodos}
+                    todos={statusFilteredTodos}
                     workspace={pageWorkspace}
                   />
                 ),
                 [workspaceShellPageIds.teamList]: (
                   <WorkspaceShellSignedInTeamListPage
-                    locale={bootstrap.workspaceShellLocale}
+                    locale={workspaceShellLocale}
                     renderNavigationAction={({ className, label, route }) => (
                       <DesktopActionLink
                         className={className}

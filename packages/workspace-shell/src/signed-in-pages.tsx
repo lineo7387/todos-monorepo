@@ -1,4 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
+import { DayPicker } from "react-day-picker";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import type {
   WorkspaceShellResources,
@@ -314,6 +316,7 @@ export interface WorkspaceShellSignedInWorkspacePageProps<
   composerPlaceholder: string;
   dateView: WorkspaceDateView;
   dateViewCounts: Record<WorkspaceDateView, number>;
+  markedDates?: string[];
   draftDueDate: string;
   draftTitle: string;
   editingDueDate: string;
@@ -524,23 +527,59 @@ function WorkspaceShellDateViewPanel({
   canManageTodos,
   dateView,
   dateViewCounts,
+  markedDates,
   onDateViewChange,
+  onSelectedDateChange,
   resource,
+  selectedDate,
   todoCount,
 }: {
   canManageTodos: boolean;
   dateView: WorkspaceDateView;
   dateViewCounts: Record<WorkspaceDateView, number>;
+  markedDates: string[];
   onDateViewChange: (view: WorkspaceDateView) => void;
+  onSelectedDateChange: (value: string) => void;
   resource: WorkspaceShellResources;
+  selectedDate: string;
   todoCount: number;
 }) {
+  const selectedDay = new Date(`${selectedDate}T00:00:00.000Z`);
+  const markedDays = markedDates.map((date) => new Date(`${date}T00:00:00.000Z`));
+  const chartData = (["all", "due-today", "upcoming"] as const).map((view) => ({
+    count: dateViewCounts[view],
+    label: getDateViewLabel(view, resource),
+  }));
+
   return (
-    <section className="task-filter-panel" aria-label={resource.pages.workspace.datePanelLabel}>
+    <section className="date-section-panel" aria-label={resource.pages.workspace.datePanelLabel}>
       <div>
         <p className="page-eyebrow">{resource.pages.workspace.datePanelLabel}</p>
         <h3>{resource.pages.workspace.datePanelHeading}</h3>
         <p>{resource.pages.workspace.datePanelBody}</p>
+      </div>
+      <div className="date-section-panel__grid">
+        <DayPicker
+          mode="single"
+          modifiers={{ due: markedDays }}
+          onSelect={(day) => {
+            if (day) {
+              onSelectedDateChange(day.toLocaleDateString("en-CA"));
+            }
+          }}
+          selected={selectedDay}
+        />
+        <div className="date-summary-chart">
+          <ResponsiveContainer height={190} width="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} />
+              <YAxis allowDecimals={false} tickLine={false} width={28} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#1f4f46" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
       <div
         className="task-filter-group"
@@ -763,6 +802,7 @@ export function WorkspaceShellSignedInWorkspacePage<
   onStartEdit,
   onTaskFilterChange,
   onToggleComplete,
+  markedDates = [],
   renderNavigationAction,
   renderSelectedDateAction,
   routeTitle,
@@ -891,8 +931,11 @@ export function WorkspaceShellSignedInWorkspacePage<
                 canManageTodos={canManageTodos}
                 dateView={dateView}
                 dateViewCounts={dateViewCounts}
+                markedDates={markedDates}
                 onDateViewChange={onDateViewChange}
+                onSelectedDateChange={onSelectedDateChange}
                 resource={resource}
+                selectedDate={selectedDate}
                 todoCount={hasAnyTodos ? todos.length : 0}
               />
               <WorkspaceShellSelectedDatePanel
@@ -925,8 +968,11 @@ export function WorkspaceShellSignedInWorkspacePage<
             canManageTodos={canManageTodos}
             dateView={dateView}
             dateViewCounts={dateViewCounts}
+            markedDates={markedDates}
             onDateViewChange={onDateViewChange}
+            onSelectedDateChange={onSelectedDateChange}
             resource={resource}
+            selectedDate={selectedDate}
             todoCount={hasAnyTodos ? todos.length : 0}
           />
           <WorkspaceShellSelectedDatePanel

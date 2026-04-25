@@ -7,9 +7,9 @@ import {
 export type WebsiteRoute = WorkspaceShellRoute;
 
 export function parseWebsiteRoute(pathname: string): WebsiteRoute {
-  return parseWorkspaceShellRoute(pathname);
+  return parseWorkspaceShellRoute(pathname, { includeWorkspaceSections: true });
 }
 
 export function getWebsiteRouteHref(route: WebsiteRoute): string {
-  return getWorkspaceShellRouteHref(route);
+  return getWorkspaceShellRouteHref(route, { includeDefaultWorkspaceSection: true });
 }

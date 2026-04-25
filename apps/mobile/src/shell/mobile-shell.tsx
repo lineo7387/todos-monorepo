@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   createTodoAppController,
   createTodoAppViewModel,
@@ -11,7 +12,11 @@ import {
   createSupabaseTodoRepository,
   createTodoSupabaseClient,
 } from "todo-data";
-import { resolveWorkspaceRouteEffect } from "workspace-shell";
+import {
+  getNextWorkspaceShellLocale,
+  getWorkspaceShellResource,
+  resolveWorkspaceRouteEffect,
+} from "workspace-shell";
 
 import { SectionCard } from "../components/mobile-ui.tsx";
 import {
@@ -103,7 +108,7 @@ export function MobileAppShell() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [draftTitle, setDraftTitle] = useState("");
-  const [draftDueDate, setDraftDueDate] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState(getCurrentDateValue);
   const [draftTeamName, setDraftTeamName] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<MobileTaskFilter>("all");
@@ -114,6 +119,9 @@ export function MobileAppShell() {
   const [teamInviteMessage, setTeamInviteMessage] = useState<string | null>(null);
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [joinFeedback, setJoinFeedback] = useState<MobileJoinFeedback | null>(null);
+  const [workspaceShellLocale, setWorkspaceShellLocale] = useState(
+    () => bootstrap.workspaceShellLocale,
+  );
 
   useEffect(() => {
     if (!bootstrap.controller) {
@@ -129,6 +137,7 @@ export function MobileAppShell() {
 
   const controller = bootstrap.controller;
   const viewModel = createTodoAppViewModel(state);
+  const shellResource = getWorkspaceShellResource(workspaceShellLocale);
   const pendingUi = viewModel.isLoading || state.pendingMutations > 0;
   const personalWorkspace =
     viewModel.workspaces.find((workspace) => workspace.kind === "personal") ?? null;
@@ -138,13 +147,28 @@ export function MobileAppShell() {
       ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
       : null;
   const todayDateValue = getCurrentDateValue();
-  const { taskCounts, dateViewCounts, filteredTodos, selectedDateTodos } = deriveMobileTaskView(
+  const { taskCounts, dateViewCounts, selectedDateTodos } = deriveMobileTaskView(
     viewModel.todos,
     taskFilter,
     dateView,
     todayDateValue,
     selectedDate,
   );
+  const statusFilteredTodos = viewModel.todos.filter((todo) => {
+    if (taskFilter === "active") {
+      return !todo.completed;
+    }
+
+    if (taskFilter === "completed") {
+      return todo.completed;
+    }
+
+    return true;
+  });
+  const markedDates = statusFilteredTodos
+    .map((todo) => todo.dueDate)
+    .filter((date): date is string => Boolean(date))
+    .filter((date, index, dates) => dates.indexOf(date) === index);
 
   useEffect(() => {
     if (!controller) {
@@ -155,7 +179,7 @@ export function MobileAppShell() {
       activeWorkspaceId: viewModel.activeWorkspace?.id ?? null,
       isAuthenticated: viewModel.isAuthenticated,
       isLoading: viewModel.isLoading,
-      locale: bootstrap.workspaceShellLocale,
+      locale: workspaceShellLocale,
       personalWorkspaceId: personalWorkspace?.id ?? null,
       route,
       routedTeamWorkspaceId: routedTeamWorkspace?.id ?? null,
@@ -178,6 +202,7 @@ export function MobileAppShell() {
     viewModel.activeWorkspace?.id,
     viewModel.isAuthenticated,
     viewModel.isLoading,
+    workspaceShellLocale,
   ]);
 
   useEffect(() => {
@@ -185,7 +210,7 @@ export function MobileAppShell() {
       setRoute(getDefaultMobileRoute());
       setRouteNotice(null);
       setDraftTitle("");
-      setDraftDueDate("");
+      setDraftDueDate(getCurrentDateValue());
       setDraftTeamName("");
       setEditingTodoId(null);
       setTaskFilter("all");
@@ -224,7 +249,7 @@ export function MobileAppShell() {
     setRouteNotice(null);
     setEditingTodoId(null);
     setDraftTitle("");
-    setDraftDueDate("");
+    setDraftDueDate(getCurrentDateValue());
   }
 
   async function signIn() {
@@ -255,7 +280,7 @@ export function MobileAppShell() {
       })
       .then(() => {
         setDraftTitle("");
-        setDraftDueDate("");
+        setDraftDueDate(getCurrentDateValue());
       })
       .catch(() => {});
   }
@@ -302,7 +327,7 @@ export function MobileAppShell() {
     await controller
       .createTeamInvite(routedTeamWorkspace.teamId)
       .then((invite) => {
-        const outcome = getCreateInviteSuccessOutcome(invite, bootstrap.workspaceShellLocale);
+        const outcome = getCreateInviteSuccessOutcome(invite, workspaceShellLocale);
         setTeamInviteCode(outcome.code);
         setTeamInviteExpiresAt(outcome.expiresAt);
         setTeamInviteMessage(outcome.message);
@@ -322,7 +347,7 @@ export function MobileAppShell() {
       .then(async (workspace) => {
         const outcome = getJoinInviteSuccessOutcome({
           activeWorkspaceId: controller.getState().activeWorkspaceId,
-          locale: bootstrap.workspaceShellLocale,
+          locale: workspaceShellLocale,
           workspace,
         });
 
@@ -342,7 +367,7 @@ export function MobileAppShell() {
             error,
             lastError: latestState.lastError,
             lastErrorKind: latestState.lastErrorKind,
-            locale: bootstrap.workspaceShellLocale,
+            locale: workspaceShellLocale,
           }),
         );
       });
@@ -384,89 +409,107 @@ export function MobileAppShell() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <SectionCard emphasized>
-          <Text style={styles.eyebrow}>CROSS-CLIENT WORKSPACE SHELL</Text>
-          <Text style={styles.title}>Mobile now follows the shared destination vocabulary.</Text>
-          <Text style={[styles.body, styles.bodyOnDark]}>
-            The mobile shell keeps the shared workspace-first model from `todo-app`, while route
-            state stays local and maps onto the same destination contract as web and desktop.
-          </Text>
-        </SectionCard>
-
-        <SectionCard>
-          {!viewModel.isAuthenticated ? (
-            <MobileAuthPage
-              email={email}
-              onEmailChange={setEmail}
-              onPasswordChange={setPassword}
-              onSubmit={() => void signIn()}
-              password={password}
-              viewModel={viewModel}
-            />
-          ) : (
-            <MobileSignedInPages
-              controller={controller}
-              dateView={dateView}
-              dateViewCounts={dateViewCounts}
-              draftDueDate={draftDueDate}
-              draftTeamName={draftTeamName}
-              draftTitle={draftTitle}
-              editingTodoId={editingTodoId}
-              filteredTodos={filteredTodos}
-              hasAnyTodos={viewModel.todos.length > 0}
-              joinFeedback={joinFeedback}
-              joinInviteCode={joinInviteCode}
-              locale={bootstrap.workspaceShellLocale}
-              onCancelEdit={cancelEditing}
-              onCreateTeam={() => void createTeam()}
-              onCreateTeamInvite={() => void createTeamInvite()}
-              onCreateTodo={() => void createTodo()}
-              onDateViewChange={setDateView}
-              onDismissJoinFeedback={() => setJoinFeedback(null)}
-              onDismissRouteNotice={() => setRouteNotice(null)}
-              onDraftDueDateChange={setDraftDueDate}
-              onDraftTeamNameChange={setDraftTeamName}
-              onDraftTitleChange={setDraftTitle}
-              onJoinInviteCodeChange={setJoinInviteCode}
-              onJoinTeam={() => void joinTeam()}
-              onNavigate={navigate}
-              onSaveEdit={(todoId, title, dueDate) => void saveEdit(todoId, title, dueDate)}
-              onSelectedDateChange={setSelectedDate}
-              onStartEdit={startEditing}
-              onTaskFilterChange={setTaskFilter}
-              pendingUi={pendingUi}
-              route={route}
-              routeNotice={routeNotice}
-              selectedDate={selectedDate}
-              selectedDateLabel={formatSelectedDateLabel(selectedDate)}
-              selectedDateTodos={selectedDateTodos}
-              state={state}
-              taskCounts={taskCounts}
-              taskFilter={taskFilter}
-              teamInviteCode={teamInviteCode}
-              teamInviteExpiresAt={teamInviteExpiresAt}
-              teamInviteMessage={teamInviteMessage}
-              viewModel={viewModel}
-            />
-          )}
-
-          {viewModel.todoTitleError ? (
-            <Text style={styles.fieldError}>{viewModel.todoTitleError}</Text>
-          ) : null}
-
-          {viewModel.screen === "error" ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.eyebrow}>SYNC NEEDS ATTENTION</Text>
-              <Text style={styles.sectionTitle}>We could not load the latest tasks.</Text>
-              <Text style={styles.body}>
-                Retry refresh after checking the network connection and environment setup.
-              </Text>
+    <GestureHandlerRootView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <SectionCard emphasized>
+            <View style={styles.heroHeader}>
+              <Text style={styles.eyebrow}>CROSS-CLIENT WORKSPACE SHELL</Text>
+              <Pressable
+                onPress={() =>
+                  setWorkspaceShellLocale(getNextWorkspaceShellLocale(workspaceShellLocale))
+                }
+                style={styles.languageButton}
+              >
+                <Text style={styles.languageButtonText}>
+                  {shellResource.actions.languageToggle}
+                </Text>
+              </Pressable>
             </View>
-          ) : null}
-        </SectionCard>
-      </ScrollView>
-    </SafeAreaView>
+            <Text style={styles.title}>Mobile now follows the shared destination vocabulary.</Text>
+            <Text style={[styles.body, styles.bodyOnDark]}>
+              The mobile shell keeps the shared workspace-first model from `todo-app`, while route
+              state stays local and maps onto the same destination contract as web and desktop.
+            </Text>
+          </SectionCard>
+
+          <SectionCard>
+            {!viewModel.isAuthenticated ? (
+              <MobileAuthPage
+                email={email}
+                onEmailChange={setEmail}
+                onPasswordChange={setPassword}
+                onSubmit={() => void signIn()}
+                password={password}
+                viewModel={viewModel}
+              />
+            ) : (
+              <MobileSignedInPages
+                controller={controller}
+                dateView={dateView}
+                dateViewCounts={dateViewCounts}
+                draftDueDate={draftDueDate}
+                draftTeamName={draftTeamName}
+                draftTitle={draftTitle}
+                editingTodoId={editingTodoId}
+                hasAnyTodos={viewModel.todos.length > 0}
+                joinFeedback={joinFeedback}
+                joinInviteCode={joinInviteCode}
+                locale={workspaceShellLocale}
+                markedDates={markedDates}
+                onCancelEdit={cancelEditing}
+                onCreateTeam={() => void createTeam()}
+                onCreateTeamInvite={() => void createTeamInvite()}
+                onCreateTodo={() => void createTodo()}
+                onDateViewChange={setDateView}
+                onDismissJoinFeedback={() => setJoinFeedback(null)}
+                onDismissRouteNotice={() => setRouteNotice(null)}
+                onDraftDueDateChange={setDraftDueDate}
+                onDraftTeamNameChange={setDraftTeamName}
+                onDraftTitleChange={setDraftTitle}
+                onJoinInviteCodeChange={setJoinInviteCode}
+                onJoinTeam={() => void joinTeam()}
+                onNavigate={navigate}
+                onSaveEdit={(todoId, title, dueDate) => void saveEdit(todoId, title, dueDate)}
+                onSelectedDateChange={setSelectedDate}
+                onStartEdit={startEditing}
+                onTaskFilterChange={setTaskFilter}
+                pendingUi={pendingUi}
+                route={route}
+                routeNotice={routeNotice}
+                selectedDate={selectedDate}
+                selectedDateLabel={formatSelectedDateLabel(selectedDate)}
+                selectedDateTodos={selectedDateTodos}
+                state={state}
+                taskCounts={taskCounts}
+                taskFilter={taskFilter}
+                teamInviteCode={teamInviteCode}
+                teamInviteExpiresAt={teamInviteExpiresAt}
+                teamInviteMessage={teamInviteMessage}
+                viewModel={viewModel}
+                filteredTodos={statusFilteredTodos}
+              />
+            )}
+
+            {viewModel.todoTitleError ? (
+              <Text style={styles.fieldError}>{viewModel.todoTitleError}</Text>
+            ) : null}
+
+            {viewModel.screen === "error" ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.eyebrow}>SYNC NEEDS ATTENTION</Text>
+                <Text style={styles.sectionTitle}>We could not load the latest tasks.</Text>
+                <Text style={styles.body}>
+                  Retry refresh after checking the network connection and environment setup.
+                </Text>
+              </View>
+            ) : null}
+          </SectionCard>
+        </ScrollView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }

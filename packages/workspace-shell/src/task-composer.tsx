@@ -50,6 +50,12 @@ export function WorkspaceShellTaskComposer({
           />
         </label>
 
+        <div className="composer__quick-actions">
+          <button disabled={!canManageTodos} onClick={() => onDraftDueDateChange("")} type="button">
+            {resource.actions.noDate}
+          </button>
+        </div>
+
         <button disabled={!canManageTodos} type="submit">
           {resource.actions.addTask}
         </button>
