@@ -381,6 +381,20 @@ function formatDueDate(value: string): string {
   }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
+function parseDateValueAsLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+
+  return new Date(year, month - 1, day);
+}
+
+function formatLocalDateValue(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function getTaskFilterLabel(
   filter: WorkspaceTaskFilter,
   resource: WorkspaceShellResources,
@@ -544,8 +558,8 @@ function WorkspaceShellDateViewPanel({
   selectedDate: string;
   todoCount: number;
 }) {
-  const selectedDay = new Date(`${selectedDate}T00:00:00.000Z`);
-  const markedDays = markedDates.map((date) => new Date(`${date}T00:00:00.000Z`));
+  const selectedDay = parseDateValueAsLocalDate(selectedDate);
+  const markedDays = markedDates.map(parseDateValueAsLocalDate);
   const chartData = (["all", "due-today", "upcoming"] as const).map((view) => ({
     count: dateViewCounts[view],
     label: getDateViewLabel(view, resource),
@@ -562,9 +576,10 @@ function WorkspaceShellDateViewPanel({
         <DayPicker
           mode="single"
           modifiers={{ due: markedDays }}
+          modifiersClassNames={{ due: "rdp-due" }}
           onSelect={(day) => {
             if (day) {
-              onSelectedDateChange(day.toLocaleDateString("en-CA"));
+              onSelectedDateChange(formatLocalDateValue(day));
             }
           }}
           selected={selectedDay}

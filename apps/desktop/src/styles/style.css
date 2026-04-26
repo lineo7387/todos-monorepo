@@ -646,9 +646,18 @@ h3 {
 }
 
 .workspace-subnav {
+  display: inline-grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
-  gap: 10px;
+  gap: 4px;
   justify-content: start;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 10px 28px rgba(73, 52, 30, 0.06);
 }
 
 .page-intro__actions {
@@ -676,18 +685,27 @@ h3 {
 }
 
 .workspace-subnav button {
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid var(--border);
+  min-height: 38px;
+  padding: 0.52rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
   color: var(--text);
-  padding: 0.72rem 1rem;
-  box-shadow: 0 10px 24px rgba(73, 52, 30, 0.05);
+  line-height: 1.1;
+  box-shadow: none;
+}
+
+.workspace-subnav button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--accent-strong);
 }
 
 .workspace-subnav button.is-active {
-  background: var(--accent);
-  color: #fffdf8;
-  border-color: rgba(15, 118, 110, 0.32);
-  box-shadow: 0 14px 30px rgba(15, 118, 110, 0.16);
+  border-color: rgba(15, 118, 110, 0.24);
+  background: #f2fbf8;
+  color: var(--accent-strong);
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.1);
 }
 
 .join-team-layout {
@@ -733,12 +751,146 @@ h3 {
 
 .date-section-panel .rdp-root {
   --rdp-accent-color: var(--accent);
+  --rdp-day_button-height: 40px;
+  --rdp-day_button-width: 40px;
   --rdp-day_button-border-radius: 12px;
+  color: var(--text);
   margin: 0;
+  width: min(100%, 332px);
 }
 
-.date-section-panel .rdp-day.due .rdp-day_button {
+.date-section-panel .rdp-root * {
+  box-sizing: border-box;
+}
+
+.date-section-panel .rdp-month {
+  position: relative;
+}
+
+.date-section-panel .rdp-months {
+  display: flex;
+  max-width: fit-content;
+}
+
+.date-section-panel .rdp-month_caption {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding-right: 88px;
+}
+
+.date-section-panel .rdp-caption_label {
+  font-weight: 700;
+}
+
+.date-section-panel .rdp-nav {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-section-panel .rdp-button_previous,
+.date-section-panel .rdp-button_next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  box-shadow: 0 8px 20px rgba(73, 52, 30, 0.08);
+}
+
+.date-section-panel .rdp-button_previous:hover:not(:disabled),
+.date-section-panel .rdp-button_next:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fffdf8;
+}
+
+.date-section-panel .rdp-chevron {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.date-section-panel .rdp-month_grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+
+.date-section-panel .rdp-weekday {
+  width: 40px;
+  height: 30px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.date-section-panel .rdp-day {
+  width: 40px;
+  height: 40px;
+  text-align: center;
+}
+
+.date-section-panel .rdp-day_button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--rdp-day_button-width);
+  height: var(--rdp-day_button-height);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--rdp-day_button-border-radius);
+  background: transparent;
+  color: var(--text);
+}
+
+.date-section-panel .rdp-day_button:hover:not(:disabled) {
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--accent-strong);
+}
+
+.date-section-panel .rdp-selected .rdp-day_button {
   border-color: var(--accent);
+  background: var(--accent);
+  color: #fffdf8;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.24);
+}
+
+.date-section-panel .rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.date-section-panel .rdp-outside {
+  opacity: 0.42;
+}
+
+.date-section-panel .rdp-due:not(.rdp-selected) .rdp-day_button {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: var(--accent-soft);
+}
+
+.date-section-panel .rdp-due .rdp-day_button::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
 }
 
 .date-summary-chart {
@@ -756,36 +908,59 @@ h3 {
 }
 
 .task-filter-group {
-  display: flex;
-  gap: 10px;
+  display: inline-flex;
+  gap: 4px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid rgba(73, 52, 30, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64);
 }
 
 .task-filter-chip {
   display: inline-flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.68);
+  min-height: 38px;
+  padding: 0.48rem 0.58rem 0.48rem 0.78rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
   color: var(--text);
-  box-shadow: 0 10px 24px rgba(73, 52, 30, 0.05);
+  line-height: 1;
+  box-shadow: none;
+}
+
+.task-filter-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--accent-strong);
 }
 
 .task-filter-chip strong {
-  padding: 0.18rem 0.48rem;
+  min-width: 1.65rem;
+  padding: 0.18rem 0.46rem;
   border-radius: 999px;
-  background: rgba(53, 38, 23, 0.08);
-  font-size: 0.85rem;
+  background: rgba(53, 38, 23, 0.07);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .task-filter-chip.is-active {
-  background: var(--accent);
-  color: #fffdf8;
+  border-color: rgba(15, 118, 110, 0.24);
+  background: #f2fbf8;
+  color: var(--accent-strong);
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.1);
 }
 
 .task-filter-chip.is-active strong {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--accent-strong);
 }
 
 .selected-date-panel {
