@@ -290,12 +290,7 @@ export interface WorkspaceShellSectionRoute<TRoute> {
   route: TRoute;
 }
 
-export interface WorkspaceShellSelectedDateTodo {
-  completed: boolean;
-  dueDate: string | null;
-  id: string;
-  title: string;
-}
+export interface WorkspaceShellSelectedDateTodo extends WorkspaceShellTodoRowTodo {}
 
 export interface WorkspaceShellTeamInvitePanelState {
   code: string;
@@ -310,7 +305,7 @@ export interface WorkspaceShellTeamInvitePanelState {
 export interface WorkspaceShellSignedInWorkspacePageProps<
   TRoute,
   TTodo extends WorkspaceShellTodoRowTodo,
-  TSelectedTodo extends WorkspaceShellSelectedDateTodo,
+  TSelectedTodo extends TTodo,
 > {
   canManageTodos: boolean;
   composerPlaceholder: string;
@@ -348,7 +343,6 @@ export interface WorkspaceShellSignedInWorkspacePageProps<
     label: string;
     route: WorkspaceShellRoute;
   }) => ReactNode;
-  renderSelectedDateAction?: (todo: TSelectedTodo) => ReactNode;
   routeTitle: string;
   section: WorkspaceShellWorkspaceSection | WorkspaceShellTeamSection;
   sectionRoutes?: WorkspaceShellSectionRoute<TRoute>[];
@@ -371,14 +365,6 @@ function formatDateTime(value: string): string {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function formatDueDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function parseDateValueAsLocalDate(value: string): Date {
@@ -538,31 +524,30 @@ function WorkspaceShellTaskFilterPanel({
 }
 
 function WorkspaceShellDateViewPanel({
-  canManageTodos,
-  dateView,
-  dateViewCounts,
   markedDates,
-  onDateViewChange,
   onSelectedDateChange,
   resource,
   selectedDate,
-  todoCount,
+  selectedDateLabel,
+  selectedDateTodos,
 }: {
-  canManageTodos: boolean;
-  dateView: WorkspaceDateView;
-  dateViewCounts: Record<WorkspaceDateView, number>;
   markedDates: string[];
-  onDateViewChange: (view: WorkspaceDateView) => void;
   onSelectedDateChange: (value: string) => void;
   resource: WorkspaceShellResources;
   selectedDate: string;
-  todoCount: number;
+  selectedDateLabel: string;
+  selectedDateTodos: WorkspaceShellSelectedDateTodo[];
 }) {
   const selectedDay = parseDateValueAsLocalDate(selectedDate);
   const markedDays = markedDates.map(parseDateValueAsLocalDate);
-  const chartData = (["all", "due-today", "upcoming"] as const).map((view) => ({
-    count: dateViewCounts[view],
-    label: getDateViewLabel(view, resource),
+  const chartData = (["all", "active", "completed"] as const).map((filter) => ({
+    count:
+      filter === "all"
+        ? selectedDateTodos.length
+        : selectedDateTodos.filter((todo) =>
+            filter === "active" ? !todo.completed : todo.completed,
+          ).length,
+    label: getTaskFilterLabel(filter, resource),
   }));
 
   return (
@@ -573,64 +558,60 @@ function WorkspaceShellDateViewPanel({
         <p>{resource.pages.workspace.datePanelBody}</p>
       </div>
       <div className="date-section-panel__grid">
-        <DayPicker
-          mode="single"
-          modifiers={{ due: markedDays }}
-          modifiersClassNames={{ due: "rdp-due" }}
-          onSelect={(day) => {
-            if (day) {
-              onSelectedDateChange(formatLocalDateValue(day));
-            }
-          }}
-          selected={selectedDay}
-        />
-        <div className="date-summary-chart">
-          <ResponsiveContainer height={190} width="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} />
-              <YAxis allowDecimals={false} tickLine={false} width={28} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#1f4f46" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="date-calendar-shell">
+          <DayPicker
+            mode="single"
+            navLayout="after"
+            modifiers={{ due: markedDays }}
+            modifiersClassNames={{ due: "rdp-due" }}
+            onSelect={(day) => {
+              if (day) {
+                onSelectedDateChange(formatLocalDateValue(day));
+              }
+            }}
+            selected={selectedDay}
+          />
         </div>
-      </div>
-      <div
-        className="task-filter-group"
-        aria-label={resource.pages.workspace.datePanelLabel}
-        role="tablist"
-      >
-        {(["all", "due-today", "upcoming"] as const).map((view) => (
-          <button
-            aria-selected={dateView === view}
-            className={`task-filter-chip ${dateView === view ? "is-active" : ""}`}
-            disabled={!canManageTodos && todoCount === 0}
-            key={view}
-            onClick={() => onDateViewChange(view)}
-            role="tab"
-            type="button"
-          >
-            <span>{getDateViewLabel(view, resource)}</span>
-            <strong>{dateViewCounts[view]}</strong>
-          </button>
-        ))}
+        <div className="date-summary-chart">
+          <div className="date-summary-chart__plot">
+            <ResponsiveContainer height="100%" width="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tickLine={false} />
+                <YAxis allowDecimals={false} tickLine={false} width={28} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#1f4f46" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="date-summary-chart__caption">{selectedDateLabel}</p>
+        </div>
       </div>
     </section>
   );
 }
 
-function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDateTodo>({
+function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellTodoRowTodo>({
+  canManageTodos,
+  editingPanel,
+  locale,
+  onDeleteTodo,
   onSelectedDateChange,
-  renderSelectedDateAction,
+  onStartEdit,
+  onToggleComplete,
   resource,
   selectedDate,
   selectedDateLabel,
   selectedDateTodos,
   taskFilter,
 }: {
+  canManageTodos: boolean;
+  editingPanel?: ReactNode;
+  locale?: string | null;
+  onDeleteTodo: (todoId: string) => void;
   onSelectedDateChange: (value: string) => void;
-  renderSelectedDateAction?: (todo: TTodo) => ReactNode;
+  onStartEdit: (todo: TTodo) => void;
+  onToggleComplete: (todo: TTodo) => void;
   resource: WorkspaceShellResources;
   selectedDate: string;
   selectedDateLabel: string;
@@ -672,6 +653,8 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
         <strong>{selectedDateLabel}</strong>
       </div>
 
+      {editingPanel}
+
       {selectedDateTodos.length === 0 ? (
         <p className="selected-date-panel__empty">
           {resource.pages.workspace.selectedDateEmpty.replace(
@@ -682,22 +665,15 @@ function WorkspaceShellSelectedDatePanel<TTodo extends WorkspaceShellSelectedDat
       ) : (
         <ul className="selected-date-list">
           {selectedDateTodos.map((todo) => (
-            <li className="selected-date-list__item" key={todo.id}>
-              <div>
-                <p>{todo.title}</p>
-                <span>
-                  {todo.completed
-                    ? resource.pages.workspace.taskFilterLabels.completed
-                    : resource.pages.workspace.taskFilterLabels.active}
-                  {todo.dueDate
-                    ? `, ${resource.pages.todo.due
-                        .replace("{{date}}", formatDueDate(todo.dueDate))
-                        .toLowerCase()}`
-                    : ""}
-                </span>
-              </div>
-              {renderSelectedDateAction ? renderSelectedDateAction(todo) : null}
-            </li>
+            <WorkspaceShellTodoRow
+              disabled={!canManageTodos}
+              key={todo.id}
+              locale={locale}
+              onDelete={onDeleteTodo}
+              onStartEdit={onStartEdit}
+              onToggleComplete={onToggleComplete}
+              todo={todo}
+            />
           ))}
         </ul>
       )}
@@ -788,12 +764,11 @@ function WorkspaceShellTeamInvitePanel({
 export function WorkspaceShellSignedInWorkspacePage<
   TRoute,
   TTodo extends WorkspaceShellTodoRowTodo,
-  TSelectedTodo extends WorkspaceShellSelectedDateTodo,
+  TSelectedTodo extends TTodo,
 >({
   canManageTodos,
   composerPlaceholder,
   dateView,
-  dateViewCounts,
   draftDueDate,
   draftTitle,
   editingDueDate,
@@ -805,7 +780,6 @@ export function WorkspaceShellSignedInWorkspacePage<
   locale,
   onCancelEditing,
   onCreateSubmit,
-  onDateViewChange,
   onDeleteTodo,
   onDraftDueDateChange,
   onDraftTitleChange,
@@ -819,7 +793,6 @@ export function WorkspaceShellSignedInWorkspacePage<
   onToggleComplete,
   markedDates = [],
   renderNavigationAction,
-  renderSelectedDateAction,
   routeTitle,
   section,
   sectionRoutes = [],
@@ -943,19 +916,34 @@ export function WorkspaceShellSignedInWorkspacePage<
           {layout === "combined" ? (
             <>
               <WorkspaceShellDateViewPanel
-                canManageTodos={canManageTodos}
-                dateView={dateView}
-                dateViewCounts={dateViewCounts}
                 markedDates={markedDates}
-                onDateViewChange={onDateViewChange}
                 onSelectedDateChange={onSelectedDateChange}
                 resource={resource}
                 selectedDate={selectedDate}
-                todoCount={hasAnyTodos ? todos.length : 0}
+                selectedDateLabel={selectedDateLabel}
+                selectedDateTodos={selectedDateTodos}
               />
               <WorkspaceShellSelectedDatePanel
+                canManageTodos={canManageTodos}
+                editingPanel={
+                  editingTodoId ? (
+                    <WorkspaceShellTodoEditor
+                      canManageTodos={canManageTodos}
+                      editingDueDate={editingDueDate}
+                      editingTitle={editingTitle}
+                      locale={locale}
+                      onCancelEditing={onCancelEditing}
+                      onEditDueDateChange={onEditDueDateChange}
+                      onEditTitleChange={onEditTitleChange}
+                      onSaveEdit={onSaveEdit}
+                    />
+                  ) : null
+                }
+                locale={locale}
+                onDeleteTodo={onDeleteTodo}
                 onSelectedDateChange={onSelectedDateChange}
-                renderSelectedDateAction={renderSelectedDateAction}
+                onStartEdit={onStartEdit}
+                onToggleComplete={onToggleComplete}
                 resource={resource}
                 selectedDate={selectedDate}
                 selectedDateLabel={selectedDateLabel}
@@ -980,26 +968,40 @@ export function WorkspaceShellSignedInWorkspacePage<
             todoCount={hasAnyTodos ? todos.length : 0}
           />
           <WorkspaceShellDateViewPanel
-            canManageTodos={canManageTodos}
-            dateView={dateView}
-            dateViewCounts={dateViewCounts}
             markedDates={markedDates}
-            onDateViewChange={onDateViewChange}
             onSelectedDateChange={onSelectedDateChange}
             resource={resource}
             selectedDate={selectedDate}
-            todoCount={hasAnyTodos ? todos.length : 0}
+            selectedDateLabel={selectedDateLabel}
+            selectedDateTodos={selectedDateTodos}
           />
           <WorkspaceShellSelectedDatePanel
+            canManageTodos={canManageTodos}
+            editingPanel={
+              editingTodoId ? (
+                <WorkspaceShellTodoEditor
+                  canManageTodos={canManageTodos}
+                  editingDueDate={editingDueDate}
+                  editingTitle={editingTitle}
+                  locale={locale}
+                  onCancelEditing={onCancelEditing}
+                  onEditDueDateChange={onEditDueDateChange}
+                  onEditTitleChange={onEditTitleChange}
+                  onSaveEdit={onSaveEdit}
+                />
+              ) : null
+            }
+            locale={locale}
+            onDeleteTodo={onDeleteTodo}
             onSelectedDateChange={onSelectedDateChange}
-            renderSelectedDateAction={renderSelectedDateAction}
+            onStartEdit={onStartEdit}
+            onToggleComplete={onToggleComplete}
             resource={resource}
             selectedDate={selectedDate}
             selectedDateLabel={selectedDateLabel}
             selectedDateTodos={selectedDateTodos}
             taskFilter={taskFilter}
           />
-          {taskEmptyState}
         </>
       ) : null}
 

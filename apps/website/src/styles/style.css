@@ -618,7 +618,15 @@ h3 {
   display: grid;
   grid-template-columns: minmax(240px, max-content) minmax(260px, 1fr);
   gap: 18px;
-  align-items: center;
+  align-items: stretch;
+}
+
+.date-calendar-shell {
+  padding: 16px;
+  border: 1px solid rgba(73, 52, 30, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .date-section-panel .rdp-root {
@@ -641,23 +649,28 @@ h3 {
 
 .date-section-panel .rdp-months {
   display: flex;
-  max-width: fit-content;
+  max-width: 100%;
 }
 
 .date-section-panel .rdp-month_caption {
   display: flex;
   align-items: center;
-  min-height: 42px;
+  min-height: 48px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   padding-right: 88px;
+  border-bottom: 1px solid rgba(73, 52, 30, 0.1);
 }
 
 .date-section-panel .rdp-caption_label {
+  font-size: 1.05rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .date-section-panel .rdp-nav {
   position: absolute;
-  top: 0;
+  top: 2px;
   right: 0;
   display: flex;
   gap: 8px;
@@ -766,8 +779,27 @@ h3 {
 }
 
 .date-summary-chart {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  height: 190px;
+  min-height: 100%;
+  padding: 16px 18px 12px;
+  border: 1px solid rgba(73, 52, 30, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.date-summary-chart__plot {
+  flex: 1;
+  min-height: 280px;
+}
+
+.date-summary-chart__caption {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  text-align: right;
 }
 
 .task-filter-group {

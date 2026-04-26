@@ -147,7 +147,7 @@ export function MobileAppShell() {
       ? (teamWorkspaces.find((workspace) => workspace.teamId === route.teamId) ?? null)
       : null;
   const todayDateValue = getCurrentDateValue();
-  const { taskCounts, dateViewCounts, selectedDateTodos } = deriveMobileTaskView(
+  const { taskCounts, selectedDateTodos } = deriveMobileTaskView(
     viewModel.todos,
     taskFilter,
     dateView,
@@ -449,8 +449,6 @@ export function MobileAppShell() {
             ) : (
               <MobileSignedInPages
                 controller={controller}
-                dateView={dateView}
-                dateViewCounts={dateViewCounts}
                 draftDueDate={draftDueDate}
                 draftTeamName={draftTeamName}
                 draftTitle={draftTitle}
@@ -464,7 +462,6 @@ export function MobileAppShell() {
                 onCreateTeam={() => void createTeam()}
                 onCreateTeamInvite={() => void createTeamInvite()}
                 onCreateTodo={() => void createTodo()}
-                onDateViewChange={setDateView}
                 onDismissJoinFeedback={() => setJoinFeedback(null)}
                 onDismissRouteNotice={() => setRouteNotice(null)}
                 onDraftDueDateChange={setDraftDueDate}

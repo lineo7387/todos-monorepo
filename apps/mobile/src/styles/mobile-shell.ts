@@ -301,6 +301,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     padding: 18,
   },
+  dateCalendarCard: {
+    borderWidth: 1,
+    borderColor: "#e0d3c0",
+    borderRadius: 20,
+    backgroundColor: "#fffaf3",
+    padding: 8,
+  },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -337,6 +344,25 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+  },
+  dateMetricGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  dateMetricCard: {
+    minWidth: 96,
+    flex: 1,
+    gap: 6,
+    borderRadius: 18,
+    backgroundColor: "#f5efe6",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dateMetricCount: {
+    color: "#1f4f46",
+    fontSize: 20,
+    fontWeight: "700",
   },
   summaryPrimary: {
     color: "#2e2418",

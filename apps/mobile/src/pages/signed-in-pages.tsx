@@ -191,8 +191,6 @@ function MobileDestinationRail({
 
 function WorkspaceScreen({
   canManageTodos,
-  dateView,
-  dateViewCounts,
   draftDueDate,
   draftTitle,
   editingTodoId,
@@ -201,7 +199,6 @@ function WorkspaceScreen({
   onCancelEdit,
   onCreateTeamInvite,
   onCreateTodo,
-  onDateViewChange,
   onDeleteTodo,
   onDraftDueDateChange,
   onDraftTitleChange,
@@ -228,8 +225,6 @@ function WorkspaceScreen({
   todos,
 }: {
   canManageTodos: boolean;
-  dateView: "all" | "due-today" | "upcoming";
-  dateViewCounts: Record<"all" | "due-today" | "upcoming", number>;
   draftDueDate: string;
   draftTitle: string;
   editingTodoId: string | null;
@@ -238,7 +233,6 @@ function WorkspaceScreen({
   onCancelEdit: () => void;
   onCreateTeamInvite: () => void;
   onCreateTodo: () => void;
-  onDateViewChange: (view: "all" | "due-today" | "upcoming") => void;
   onDeleteTodo: (todoId: string) => void;
   onDraftDueDateChange: (value: string) => void;
   onDraftTitleChange: (value: string) => void;
@@ -267,7 +261,7 @@ function WorkspaceScreen({
   const resource = getWorkspaceShellResource(locale);
   const activeSection = getMobileWorkspaceSection(route);
   const emptyStateCopy = getTaskEmptyStateCopy({
-    dateView,
+    dateView: "all",
     hasAnyTodos,
     resource,
     taskFilter,
@@ -290,6 +284,20 @@ function WorkspaceScreen({
     selected: true,
     selectedColor: "#1f4f46",
   };
+  const selectedDateMetrics = [
+    {
+      count: selectedDateTodos.length,
+      label: resource.pages.workspace.taskFilterLabels.all,
+    },
+    {
+      count: selectedDateTodos.filter((todo) => !todo.completed).length,
+      label: resource.pages.workspace.taskFilterLabels.active,
+    },
+    {
+      count: selectedDateTodos.filter((todo) => todo.completed).length,
+      label: resource.pages.workspace.taskFilterLabels.completed,
+    },
+  ];
   const sectionTabs = getMobileWorkspaceSectionTabs(route, resource);
   const personalWorkspaceSection = activeSection === "invite" ? "tasks" : activeSection;
 
@@ -512,40 +520,25 @@ function WorkspaceScreen({
           <Calendar
             markedDates={calendarMarkedDates}
             onDayPress={(day) => onSelectedDateChange(day.dateString)}
+            style={styles.dateCalendarCard}
             theme={{
+              calendarBackground: "#fffaf3",
               arrowColor: "#1f4f46",
+              monthTextColor: "#2e2418",
               selectedDayBackgroundColor: "#1f4f46",
+              textDayHeaderFontWeight: "700",
+              textMonthFontSize: 20,
+              textMonthFontWeight: "700",
+              textSectionTitleColor: "#8a7a63",
               todayTextColor: "#1f4f46",
             }}
           />
-          <View style={styles.chipRow}>
-            {(["all", "due-today", "upcoming"] as const).map((view) => (
-              <Pressable
-                key={view}
-                onPress={() => onDateViewChange(view)}
-                style={[
-                  styles.filterChip,
-                  dateView === view ? styles.filterChipActive : null,
-                  pendingUi ? styles.buttonDisabled : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipLabel,
-                    dateView === view ? styles.filterChipLabelActive : null,
-                  ]}
-                >
-                  {getDateViewLabel(view, resource)}
-                </Text>
-                <Text
-                  style={[
-                    styles.filterChipCount,
-                    dateView === view ? styles.filterChipLabelActive : null,
-                  ]}
-                >
-                  {dateViewCounts[view]}
-                </Text>
-              </Pressable>
+          <View style={styles.dateMetricGrid}>
+            {selectedDateMetrics.map((entry) => (
+              <View key={entry.label} style={styles.dateMetricCard}>
+                <Text style={styles.filterChipLabel}>{entry.label}</Text>
+                <Text style={styles.dateMetricCount}>{entry.count}</Text>
+              </View>
             ))}
           </View>
           <View style={styles.summaryRow}>
@@ -566,17 +559,18 @@ function WorkspaceScreen({
           ) : (
             <View style={styles.stack}>
               {selectedDateTodos.map((todo) => (
-                <View key={todo.id} style={styles.selectedDateCard}>
-                  <Text style={styles.selectedDateTitle}>{todo.title}</Text>
-                  <Text style={styles.selectedDateMeta}>
-                    {todo.completed
-                      ? resource.pages.workspace.taskFilterLabels.completed
-                      : resource.pages.workspace.taskFilterLabels.active}
-                    {todo.dueDate
-                      ? `, ${resource.pages.todo.due.replace("{{date}}", todo.dueDate)}`
-                      : ""}
-                  </Text>
-                </View>
+                <MobileTodoRow
+                  disabled={!canManageTodos}
+                  isEditing={editingTodoId === todo.id}
+                  key={todo.id}
+                  locale={locale}
+                  onCancelEdit={onCancelEdit}
+                  onDelete={onDeleteTodo}
+                  onSaveEdit={onSaveEdit}
+                  onStartEdit={onStartEdit}
+                  onToggleComplete={onToggleComplete}
+                  todo={todo}
+                />
               ))}
             </View>
           )}
@@ -626,8 +620,6 @@ function WorkspaceScreen({
 
 export function MobileSignedInPages({
   controller,
-  dateView,
-  dateViewCounts,
   draftDueDate,
   draftTeamName,
   draftTitle,
@@ -642,7 +634,6 @@ export function MobileSignedInPages({
   onCreateTeam,
   onCreateTeamInvite,
   onCreateTodo,
-  onDateViewChange,
   onDismissJoinFeedback,
   onDismissRouteNotice,
   onDraftDueDateChange,
@@ -670,8 +661,6 @@ export function MobileSignedInPages({
   viewModel,
 }: {
   controller: TodoAppController;
-  dateView: "all" | "due-today" | "upcoming";
-  dateViewCounts: Record<"all" | "due-today" | "upcoming", number>;
   draftDueDate: string;
   draftTeamName: string;
   draftTitle: string;
@@ -689,7 +678,6 @@ export function MobileSignedInPages({
   onCreateTeam: () => void;
   onCreateTeamInvite: () => void;
   onCreateTodo: () => void;
-  onDateViewChange: (view: "all" | "due-today" | "upcoming") => void;
   onDismissJoinFeedback: () => void;
   onDismissRouteNotice: () => void;
   onDraftDueDateChange: (value: string) => void;
@@ -920,8 +908,6 @@ export function MobileSignedInPages({
       {route.name === "personal-workspace" || route.name === "team-detail" ? (
         <WorkspaceScreen
           canManageTodos={viewModel.canManageTodos}
-          dateView={dateView}
-          dateViewCounts={dateViewCounts}
           draftDueDate={draftDueDate}
           draftTitle={draftTitle}
           editingTodoId={editingTodoId}
@@ -930,7 +916,6 @@ export function MobileSignedInPages({
           onCancelEdit={onCancelEdit}
           onCreateTeamInvite={onCreateTeamInvite}
           onCreateTodo={onCreateTodo}
-          onDateViewChange={onDateViewChange}
           onDeleteTodo={(todoId) => void controller.deleteTodo(todoId).catch(() => {})}
           onDraftDueDateChange={onDraftDueDateChange}
           onDraftTitleChange={onDraftTitleChange}

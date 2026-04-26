@@ -531,8 +531,9 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         composerNoWorkspace: "Select a workspace before adding a task",
         composerPersonal: "Add a task for yourself",
         composerTeam: "Add a task for this team",
-        datePanelBody: "Only tasks with a due date appear in date-based views for this workspace.",
-        datePanelHeading: "Browse dated tasks without turning this into a full calendar.",
+        datePanelBody:
+          "Pick a date from the calendar to inspect that day's tasks. The chart and list both follow the selected date.",
+        datePanelHeading: "Browse tasks by date without turning this into a full calendar.",
         datePanelLabel: "Date view",
         emptyMatchBody:
           "Switch task filters or date views to review the rest of this workspace. Date-based views only include tasks that already have a due date.",
@@ -567,7 +568,7 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         personalList: "Personal list",
         personalWorkspaceBadge: "Personal workspace",
         selectedDateBody:
-          "View tasks due on {{selectedDateLabel}} for this workspace. This day view follows the current {{taskFilter}} filter and only includes tasks that already have a due date.",
+          "View tasks due on {{selectedDateLabel}} for this workspace. This list follows the current {{taskFilter}} filter and only includes tasks that already have a due date.",
         selectedDateEmpty: "No {{taskFilter}} tasks are due on this day.",
         selectedDateLabel: "Selected day",
         selectedDateSummary: "{{count}} task{{plural}}",
@@ -743,8 +744,8 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         composerNoWorkspace: "先选择工作区再添加任务",
         composerPersonal: "为自己添加任务",
         composerTeam: "为这个团队添加任务",
-        datePanelBody: "只有带截止日期的任务会出现在该工作区的日期视图中。",
-        datePanelHeading: "浏览带日期的任务，但不把它扩展成完整日历。",
+        datePanelBody: "在日历中选择日期查看当天任务，右侧图表和下方列表都会跟随这个选中日期更新。",
+        datePanelHeading: "按日期浏览任务，但不把它扩展成完整日历。",
         datePanelLabel: "日期视图",
         emptyMatchBody:
           "切换任务筛选或日期视图以查看该工作区的其他内容。日期视图只包含已经设置截止日期的任务。",
@@ -773,7 +774,7 @@ export const workspaceShellResources: Record<WorkspaceShellLocale, WorkspaceShel
         personalList: "个人列表",
         personalWorkspaceBadge: "个人工作区",
         selectedDateBody:
-          "查看该工作区在 {{selectedDateLabel}} 截止的任务。这个日期视图会沿用当前 {{taskFilter}} 筛选，并且只包含已经设置截止日期的任务。",
+          "查看该工作区在 {{selectedDateLabel}} 截止的任务。这个列表会沿用当前 {{taskFilter}} 筛选，并且只包含已经设置截止日期的任务。",
         selectedDateEmpty: "这一天没有截止的{{taskFilter}}任务。",
         selectedDateLabel: "选中日期",
         selectedDateSummary: "{{count}} 个任务",

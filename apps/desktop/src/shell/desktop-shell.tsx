@@ -841,11 +841,6 @@ export function DesktopAppShell() {
                         {label}
                       </DesktopActionLink>
                     )}
-                    renderSelectedDateAction={(todo) => (
-                      <button onClick={() => beginEditing(todo)} type="button">
-                        {shellResource.actions.edit}
-                      </button>
-                    )}
                     routeTitle={getDesktopRouteTitle(
                       route,
                       routedTeamWorkspace?.name,
@@ -921,11 +916,6 @@ export function DesktopAppShell() {
                       >
                         {label}
                       </DesktopActionLink>
-                    )}
-                    renderSelectedDateAction={(todo) => (
-                      <button onClick={() => beginEditing(todo)} type="button">
-                        {shellResource.actions.edit}
-                      </button>
                     )}
                     routeTitle={getDesktopRouteTitle(
                       route,
