@@ -19,6 +19,7 @@ import {
 
 import { TopLevelNavigation } from "../components/top-level-navigation.tsx";
 import { getWebsiteSupabaseEnv } from "../config/env.ts";
+import { AuthHeroPanel } from "../pages/auth-hero-panel.tsx";
 import { AuthPage } from "../pages/auth-page.tsx";
 import type { WebsiteWorkspace, WorkspaceDateView, WorkspaceTaskFilter } from "../pages/types.ts";
 import { getWebsiteRouteHref, parseWebsiteRoute, type WebsiteRoute } from "../routing/routes.ts";
@@ -480,8 +481,13 @@ export function WebsiteAppShell() {
     return null;
   }
 
+  const showAuthPanel =
+    viewModel.screen === "auth" || (viewModel.screen === "loading" && !viewModel.isAuthenticated);
+
   return (
-    <main className="app-frame">
+    <main className={`app-frame ${showAuthPanel ? "app-frame--auth" : ""}`}>
+      {showAuthPanel ? <AuthHeroPanel /> : null}
+
       <section className="workspace-panel workspace-panel--page">
         <header className="workspace-header workspace-header--page">
           <div className="workspace-header__title">
@@ -565,8 +571,7 @@ export function WebsiteAppShell() {
             </div>
           ) : null}
 
-          {viewModel.screen === "auth" ||
-          (viewModel.screen === "loading" && !viewModel.isAuthenticated) ? (
+          {showAuthPanel ? (
             <AuthPage
               authMode={authMode}
               email={email}

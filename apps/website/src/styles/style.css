@@ -122,6 +122,14 @@ h3 {
   padding: 32px 0 56px;
 }
 
+.app-frame--auth {
+  width: min(1360px, calc(100% - 40px));
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.15fr);
+  gap: 24px;
+}
+
+.hero-panel,
 .workspace-panel,
 .setup-panel {
   border: 1px solid var(--border);
@@ -130,12 +138,31 @@ h3 {
   backdrop-filter: blur(18px);
 }
 
+.hero-panel,
 .setup-panel,
 .workspace-panel--page {
   background: linear-gradient(180deg, rgba(255, 250, 240, 0.94) 0%, rgba(250, 243, 228, 0.96) 100%);
   padding: 32px;
 }
 
+.hero-panel {
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+  overflow: hidden;
+}
+
+.hero-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -72px -92px auto;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.2), transparent 72%);
+  pointer-events: none;
+}
+
+.hero-panel__eyebrow,
 .page-eyebrow,
 .workspace-header__eyebrow,
 .setup-panel__eyebrow,
@@ -148,12 +175,14 @@ h3 {
   color: var(--text-muted);
 }
 
+.hero-panel h1,
 .setup-panel h1,
 .workspace-header--page h1 {
   margin-top: 1rem;
   font: 600 clamp(2.5rem, 5vw, 4rem) / 0.95 var(--serif);
 }
 
+.hero-panel__body,
 .dashboard-hero__body,
 .setup-panel__body,
 .auth-panel__body,
@@ -161,6 +190,25 @@ h3 {
   margin-top: 1rem;
   color: var(--text-muted);
   max-width: 32rem;
+}
+
+.hero-panel__highlights {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.hero-panel__highlights div {
+  display: grid;
+  gap: 0.35rem;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(73, 52, 30, 0.08);
+}
+
+.hero-panel__highlights span {
+  color: var(--text-muted);
 }
 
 .workspace-panel {
@@ -1245,6 +1293,11 @@ h3 {
     padding: 20px 0 36px;
   }
 
+  .app-frame--auth {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
   .top-nav__header {
     flex-direction: column;
   }
@@ -1299,6 +1352,7 @@ h3 {
 }
 
 @media (max-width: 640px) {
+  .hero-panel,
   .workspace-panel,
   .setup-panel {
     padding: 20px;
